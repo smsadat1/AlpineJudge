@@ -1,8 +1,8 @@
-# Borealis
+# AlpineJudge
 
 ![banner](docs/assets/banner.png)
 
-A multi-language secure code execution platform using isolated containerized runtimes with strict resource control.
+A stateless, secure, multi-language code execution engine built for high performance and easy deployment.
 
 ![Status](https://img.shields.io/badge/status-active-brightgreen)
 ![Architecture](https://img.shields.io/badge/microservices-enabled-blue)
@@ -30,39 +30,31 @@ Most systems struggle with:
 - resource abuse (CPU/memory/time)
 - lack of controlled and reliable execution orchestration
 
-Borealis solves this by treating code execution as a hardened infrastructure layer rather than a simple runtime task.
+AlpineJudge solves this by treating code execution as a hardened infrastructure layer rather than a simple runtime task.
 
 
 ## Getting Started
 
   - Setup CLI
   ```
-  $ git clone git@github.com:smsadat1/Borealis.git 
-  $ cd Borealis/borealis
-  $ bash build.sh
+  coming soon ...
   ```
 
   - Setup server (self-host)
   ```
-  $ cd Borealis
-  $ bash scripts/buildimages.sh
-  $ docker compose build --parallel && docker compose up
+  coming soon ...
   ```
 
 
 ## Example Usage
-
-  ![Usage example](docs/assets/example.gif)
-
-  Get API key and login: `$ borealis auth login`
-
-  Send code and testcases to run: `$ borealis runner`
-
+ ```
+  coming soon ...
+  ```
 
 
 ## Design Philosophy
 
-Borealis is designed around isolation, predictability and reproducibility when executing untrusted code.
+AlpineJudge is designed around statelessness, isolation, predictability and reproducibility when executing untrusted code.
 
 The system prioritizes:
   - strong runtime isolation
@@ -72,15 +64,14 @@ The system prioritizes:
 
 ## System overview
 
-Borealis is composed of three core services:
+AlpineJudge is composed of two subsystems:
 
- - APIService -> request handling and orchestration 
- - AuthService -> authentication and API key management
- - RunnerService -> isolated code execution engine
+ - Dispatcher -> request handling and orchestration 
+ - Runner -> isolated code execution engine
 
 Execution flow: 
 
-  ` Client -> APIService -> AuthService -> RunnerService -> Sandbox (gVisor) `
+  ` Client -> Dispatcher -> RunnerService -> Sandbox (gVisor) `
 
 ## Key Capabilities
 
@@ -92,17 +83,11 @@ Execution flow:
 
 
 
-## Non-Goals
-
-To maintain system simplicity and reliability, Borealis intentionally does NOT support:
-
-- multi-file project builds (e.g. full repositories)
-- dependency installation (pip, npm, etc.)
-- persistent storage between executions
-- network access inside execution environments
-
-These constraints ensure predictable, fast, and secure execution.
-
+## Non-Goal 
+AlpineJudge is not a contest management platform. 
+It intentionally remains stateless and does not manage users, contests, submissions, or persistent application data. 
+Those responsibilities belong to the integrating application. 
+AlpineJudge focuses solely on validating, scheduling, executing, and evaluating code submissions.
 
 ## Documentation
 
@@ -113,8 +98,3 @@ Detailed technical documentation is available in `/docs`:
   - Security model -> `docs/security.md`
   - API references -> `docs/api.md`
   - Design decisions -> `docs/design-decisions.md`
-
-
-## Name
-
-Borealis is inspired by the research vessel from *Half Life 2*
