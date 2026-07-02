@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.1
 	github.com/joho/godotenv v1.5.1
 	github.com/rabbitmq/amqp091-go v1.12.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -26,4 +27,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.5 // indirect
 	github.com/aws/smithy-go v1.27.3 // indirect
+	github.com/sixafter/aes-ctr-drbg v1.19.2 // indirect
+	github.com/sixafter/nanoid v1.64.4 // indirect
+	github.com/sixafter/prng-chacha v1.16.4 // indirect
+	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 )

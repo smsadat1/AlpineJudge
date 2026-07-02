@@ -50,8 +50,8 @@ func InitHttpServer() {
 
 	mux.HandleFunc("GET /", ResponseRootHanlderFn)
 	mux.HandleFunc("POST /submit", SubmissionRecieverFn)
-	mux.HandleFunc("GET /job/{job_id}/events")
-	mux.HandleFunc("GET /jobs/{job_id}/result")
+	// mux.HandleFunc("GET /job/{job_id}/events")
+	// mux.HandleFunc("GET /jobs/{job_id}/result")
 
 	serverPort := "8080"
 	fmt.Printf("Starting server on http://localhost%s\n", serverPort)
