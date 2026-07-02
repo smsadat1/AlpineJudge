@@ -1,0 +1,32 @@
+[Unit]
+Description=AlpineJudge Runner
+Documentation=https://github.com/smsadat1/alpinejudge/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+User=ajrunner
+Group=ajrunner
+
+ExecStart=/usr/bin/ajrunner
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=on-failure
+RestartSec=5s
+
+WorkingDirectory=/var/lib/ajrunner
+
+Environment=AJRUNNER_CONFIG=/etc/ajrunner/config.yaml
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
