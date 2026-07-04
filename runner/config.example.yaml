@@ -1,0 +1,11 @@
+name: alpine-judge-runner
+
+runner_id: runner-001
+
+images: 
+  - alpinejudge/gcc:v0.1.0
+  - alpinejudge/python:v0.1.0
+  - alpinejudge/go:v0.1.0
+  - alpinejudge/java:v0.1.0
+  - alpinejudge/node:v0.1.0
+

@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"github.com/sixafter/nanoid"
+
+	"shared"
 )
 
-func ValidateSubmission(ctx context.Context, s3m S3Manager, submission SubmissionSpec) error {
+func ValidateSubmission(ctx context.Context, s3m shared.S3Manager, submission SubmissionSpec) error {
 
 	dirPath := submission.SubmissionID
 	language := submission.Language
@@ -28,17 +30,14 @@ func ValidateSubmission(ctx context.Context, s3m S3Manager, submission Submissio
 	// check language & version availability
 	ok = IsLanguageSupported(language, version)
 	if !ok {
-		return fmt.Errorf("Unsupported language or version")
-	}
-	if err != nil {
-		return err
+		return fmt.Errorf("Unsupported language or version [Lang: %v Ver: %v]", language, version)
 	}
 
 	// check testset & testsetVer
 	ok, err = s3m.CheckS3Dir(ctx, string(testset+"/"+testsetVer))
 
 	if !ok {
-		return fmt.Errorf("")
+		return fmt.Errorf("Testset: [%v/%v] not found in S3", testset, testsetVer)
 	}
 	if err != nil {
 		return err
@@ -47,7 +46,7 @@ func ValidateSubmission(ctx context.Context, s3m S3Manager, submission Submissio
 	return nil
 }
 
-func PrepareSubmission(ctx context.Context, s3m S3Manager, submission SubmissionSpec) (JobSpec, error) {
+func PrepareSubmission(ctx context.Context, s3m shared.S3Manager, submission SubmissionSpec) (JobSpec, error) {
 
 	// generate job_id
 	jobID, err := nanoid.New()

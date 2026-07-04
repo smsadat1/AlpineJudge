@@ -1,23 +1,19 @@
-package dispatcher
+package shared
 
 import (
 	"context"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Panicf("%s %s\n", err, msg)
-	}
-}
+func RMQConsumer(ctx context.Context, localQueue chan<- amqp.Delivery) {
 
-func RMQProducer(ctx context.Context, localQueue <-chan amqp.Publishing) {
 	err := godotenv.Load()
 	if err != nil {
 		// fallback: If running from repo_root/, look explicitly inside /runner/.env
@@ -60,6 +56,14 @@ func RMQProducer(ctx context.Context, localQueue <-chan amqp.Publishing) {
 	defer ch.Close()
 	log.Println("Opened channel")
 
+	maxQueueCap, _ := strconv.Atoi(os.Getenv("MAX_QUEUE_CAP"))
+	err = ch.Qos(
+		maxQueueCap,
+		0,     // prefetch size
+		false, // global
+	)
+	failOnError(err, "Failed to set QoS backpressure")
+
 	queueName := os.Getenv("RABBITMQ_QUEUE_NAME")
 	q, err := ch.QueueDeclare(
 		queueName,
@@ -71,21 +75,32 @@ func RMQProducer(ctx context.Context, localQueue <-chan amqp.Publishing) {
 	)
 	failOnError(err, "Failed to declared queue")
 
-	log.Println("Producer initialized. Ready to transmit payloads...")
+	msgs, err := ch.Consume(
+		q.Name,
+		"runner_consumer",
+		false, // runner will send ACK later
+		false, // exclusive
+		true,  // no local
+		true,  // no wait
+		nil,   // args
+	)
+	failOnError(err, "Failed to register consumer")
+	log.Println("Consumer registered. Piping data to Go channel")
 
-	// continuous loop to drain the channel safely without data loss
-	for msg := range localQueue {
-		// short 5-second timeout context strictly for this specific publish
-		_, pubCancel := context.WithTimeout(ctx, 5*time.Second)
-		err = ch.PublishWithContext(ctx, "", q.Name, false, false, <-localQueue)
-		pubCancel() // clean up context instantly inside the loop
+	// pull from RMQ chan and pass to localQueue
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Stopping consumer loop...")
+			return
+		case msg, ok := <-msgs:
+			if !ok {
+				log.Println("RabbitMQ channel closed unexpectedly")
+				return
+			}
 
-		if err != nil {
-			log.Printf("Failed to publish message: %v\n", err)
-			continue // continue for later messages
+			//  naturally BLOCK here if localQueue reaches MAX_QUEUE_CAP.
+			localQueue <- msg
 		}
-
-		log.Printf("Sent message successfully! Type: %s, Body length: %d\n", msg.ContentType, len(msg.Body))
 	}
-	log.Println("Local queue channel closed. Exiting producer routine gracefully")
 }

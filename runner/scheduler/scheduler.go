@@ -7,7 +7,7 @@ import (
 )
 
 const OVER_SUB_FACTOR = 2
-const SLOT_FLOOR = 0
+const SLOT_FLOOR = 0.0
 const MEMORYLIMITMB_PER_CONTAINER = 256
 
 func clamp[T cmp.Ordered](val, min, max T) T {
@@ -31,15 +31,15 @@ func RADScheduler(
 	memorySlots := float64((0.8 * float64(availableMemoryMB)) / MEMORYLIMITMB_PER_CONTAINER)
 	availableSlots := clamp(min(memorySlots, float64(slotCeiling)), SLOT_FLOOR, float64(slotCeiling))
 	usedSlots := runningContainers
-	idleSlots := int(availableSlots - float64(usedSlots))
+	idleSlots := availableSlots - float64(usedSlots)
 
 	var status string
 
-	if availableSlots >= float64(slotBaseline) {
+	if idleSlots >= float64(slotBaseline) {
 		status = "NORMAL"
-	} else if availableSlots < float64(slotBaseline) && availableSlots > SLOT_FLOOR {
+	} else if idleSlots < float64(slotBaseline) && idleSlots > SLOT_FLOOR {
 		status = "DEGRADED"
-	} else if availableSlots <= SLOT_FLOOR {
+	} else if idleSlots <= float64(SLOT_FLOOR) {
 		status = "CRITICAL"
 	}
 

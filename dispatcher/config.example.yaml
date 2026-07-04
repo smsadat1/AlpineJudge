@@ -23,6 +23,11 @@ languages:
       - java14
       - java16
 
+  node:
+    versions:
+      - node18
+      - node22
+
   python:
     versions:
       - python3.10

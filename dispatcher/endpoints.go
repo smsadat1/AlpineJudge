@@ -10,7 +10,7 @@ import (
 var (
 	ResponseRootHanlderFn = ResponseRootHanlder
 	SubmissionRecieverFn  = SubmissionReciever
-	ValidateSubmissionFn  = validateSubmission
+	ValidateSubmissionFn  = ValidateSubmission
 )
 
 func ResponseRootHanlder(w http.ResponseWriter, r *http.Request) {
@@ -33,10 +33,10 @@ func SubmissionReciever(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// wrong submission
-	if err = ValidateSubmissionFn(submission); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	// if err = ValidateSubmissionFn(submission); err != nil {
+	// 	http.Error(w, err.Error(), http.StatusBadRequest)
+	// 	return
+	// }
 
 	// successful submission
 	w.Header().Set("Content-Type", "application/json")

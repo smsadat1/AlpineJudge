@@ -4,8 +4,7 @@ type ExecRules struct {
 	// system
 	ContainerID string
 	Image       string
-	Command     string
-	Stage       string
+	Args        []string
 
 	// environment
 	HostSrcpath       string
@@ -15,11 +14,9 @@ type ExecRules struct {
 	// rules
 	MemoryLimitMB  uint64
 	PidLimit       int64
-	CpuShares      uint64
-	CpuCores       float64
+	CpuQuota       float64
 	NoNewPrivilege bool
 	ReadOnlyRootfs bool
-	AllowNetwork   bool
 	Timeoutsec     uint32
 }
 

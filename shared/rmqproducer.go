@@ -1,4 +1,4 @@
-package rmq
+package shared
 
 import (
 	"context"
@@ -11,16 +11,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-const MAX_QUEUE_CAP = 10
-
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Panicf("%s %s\n", err, msg)
-	}
-}
-
-func ConnectRMQ(ctx context.Context, localQueue chan<- amqp.Delivery) {
-
+func RMQProducer(ctx context.Context, localQueue <-chan amqp.Publishing) {
 	err := godotenv.Load()
 	if err != nil {
 		// fallback: If running from repo_root/, look explicitly inside /runner/.env
@@ -63,13 +54,6 @@ func ConnectRMQ(ctx context.Context, localQueue chan<- amqp.Delivery) {
 	defer ch.Close()
 	log.Println("Opened channel")
 
-	err = ch.Qos(
-		MAX_QUEUE_CAP,
-		0,     // prefetch size
-		false, // global
-	)
-	failOnError(err, "Failed to set QoS backpressure")
-
 	queueName := os.Getenv("RABBITMQ_QUEUE_NAME")
 	q, err := ch.QueueDeclare(
 		queueName,
@@ -81,32 +65,21 @@ func ConnectRMQ(ctx context.Context, localQueue chan<- amqp.Delivery) {
 	)
 	failOnError(err, "Failed to declared queue")
 
-	msgs, err := ch.Consume(
-		q.Name,
-		"runner_consumer",
-		false, // runner will send ACK later
-		false, // exclusive
-		true,  // no local
-		true,  // no wait
-		nil,   // args
-	)
-	failOnError(err, "Failed to register consumer")
-	log.Println("Consumer registered. Piping data to Go channel")
+	log.Println("Producer initialized. Ready to transmit payloads...")
 
-	// pull from RMQ chan and pass to localQueue
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Stopping consumer loop...")
-			return
-		case msg, ok := <-msgs:
-			if !ok {
-				log.Println("RabbitMQ channel closed unexpectedly")
-				return
-			}
+	// continuous loop to drain the channel safely without data loss
+	for msg := range localQueue {
+		// short 5-second timeout context strictly for this specific publish
+		_, pubCancel := context.WithTimeout(ctx, 5*time.Second)
+		err = ch.PublishWithContext(ctx, "", q.Name, false, false, <-localQueue)
+		pubCancel() // clean up context instantly inside the loop
 
-			//  naturally BLOCK here if localQueue reaches MAX_QUEUE_CAP.
-			localQueue <- msg
+		if err != nil {
+			log.Printf("Failed to publish message: %v\n", err)
+			continue // continue for later messages
 		}
+
+		log.Printf("Sent message successfully! Type: %s, Body length: %d\n", msg.ContentType, len(msg.Body))
 	}
+	log.Println("Local queue channel closed. Exiting producer routine gracefully")
 }

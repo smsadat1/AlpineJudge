@@ -1,9 +1,8 @@
-package rmq
+package utils
 
 import (
 	"context"
 	"encoding/json"
-	"local/runner/utils"
 	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -13,7 +12,7 @@ import (
 * Continuously process data from localQueue
 * Processed jobs are passed to onSuccess callback function
  */
-func ProcessJobSpec(ctx context.Context, localQueue <-chan amqp.Delivery, onSuccess func(utils.JobSpec)) error {
+func ProcessJobSpec(ctx context.Context, localQueue <-chan amqp.Delivery, onSuccess func(JobSpec)) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -26,7 +25,7 @@ func ProcessJobSpec(ctx context.Context, localQueue <-chan amqp.Delivery, onSucc
 			}
 			log.Printf("Worker processing job len: %v\n", len(msg.Body))
 
-			var jobspec utils.JobSpec
+			var jobspec JobSpec
 			err := json.Unmarshal(msg.Body, &jobspec)
 
 			// NACK bad JSON and move on
