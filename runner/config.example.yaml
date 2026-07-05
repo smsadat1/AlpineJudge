@@ -2,10 +2,21 @@ name: alpine-judge-runner
 
 runner_id: runner-001
 
-images: 
+images:
   - alpinejudge/gcc:v0.1.0
   - alpinejudge/python:v0.1.0
   - alpinejudge/go:v0.1.0
   - alpinejudge/java:v0.1.0
   - alpinejudge/node:v0.1.0
 
+scheduler:
+  over_sub_factor: 2
+  memory_reserve_percent: 20
+
+limits:
+  memory_limit_mb: 1024
+  pid_limit: 128
+  cpu_quota: 2
+  no_new_privileges: true
+  readonly_rootfs: true
+  timeout_sec: 300

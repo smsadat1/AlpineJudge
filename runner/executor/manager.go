@@ -13,17 +13,15 @@ import (
 	"github.com/containerd/containerd/v2/pkg/cio"
 )
 
-func createAndManageTask(
-	container containerd.Container,
-	ctx context.Context,
-	rules utils.ExecRules,
-) error {
+func manageContainer(
+	ctx context.Context, container containerd.Container, rules utils.ExecRules,
+) (utils.ResultSpec, error) {
 
 	// pass the write end to containerd
 	task, err := container.NewTask(ctx, cio.NewCreator())
 
 	if err != nil {
-		return err
+		return utils.ResultSpec{}, err
 	}
 	// made sure to delete if something fails midway
 	defer task.Delete(ctx)
@@ -31,12 +29,12 @@ func createAndManageTask(
 	// get exit status channel
 	statusC, err := task.Wait(ctx)
 	if err != nil {
-		return err
+		return utils.ResultSpec{}, err
 	}
 
 	// start task execution
 	if err := task.Start(ctx); err != nil {
-		return err
+		return utils.ResultSpec{}, err
 	}
 	log.Println("Task started successfully")
 
@@ -50,7 +48,7 @@ func createAndManageTask(
 
 		log.Println("Task completed.")
 		if status.Error() != nil {
-			return status.Error()
+			return utils.ResultSpec{}, status.Error()
 		}
 
 	case <-ctxTimeout.Done():
@@ -61,7 +59,7 @@ func createAndManageTask(
 				log.Println("Task finished right as timeout hit; ignoring 'not found' error.")
 			} else {
 				// genuine error
-				return err
+				return utils.ResultSpec{}, err
 			}
 		}
 	}
@@ -69,10 +67,10 @@ func createAndManageTask(
 	// block till exit status
 	status := <-statusC
 	if status.Error() != nil {
-		return status.Error()
+		return utils.ResultSpec{}, status.Error()
 	}
 
 	log.Printf("[nsrunner] Task exited with status code %v", status.ExitCode())
 
-	return nil
+	return utils.ResultSpec{}, nil
 }

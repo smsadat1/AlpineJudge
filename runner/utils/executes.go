@@ -7,9 +7,11 @@ type ExecRules struct {
 	Args        []string
 
 	// environment
-	HostSrcpath       string
-	ContainerDestPath string
-	Env               map[string]string
+	CodePathHost         string
+	CodePathContainer    string
+	TestsetPathHost      string
+	TestsetPathContainer string
+	Env                  map[string]string
 
 	// rules
 	MemoryLimitMB  uint64
@@ -19,18 +21,3 @@ type ExecRules struct {
 	ReadOnlyRootfs bool
 	Timeoutsec     uint32
 }
-
-type Verdict string
-
-const (
-	VerdictAC  Verdict = "AC"
-	VerdictWA  Verdict = "WA"
-	VerdictTLE Verdict = "TLE"
-	VerdictMLE Verdict = "MLE"
-	VerdictOLE Verdict = "OLE"
-	VerdictCE  Verdict = "CE"
-	VerdictRE  Verdict = "RE"
-	VerdictIE  Verdict = "IE"
-	VerdictPE  Verdict = "PE"
-	VerdictSE  Verdict = "SE"
-)

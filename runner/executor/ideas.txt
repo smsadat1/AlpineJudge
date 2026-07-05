@@ -1,0 +1,22 @@
+make one single end function -> SpawnContainer()
+It'll recieve args -> Execrules, Client & Context
+These are also the inputs of the container pipeline itself.
+Pipeline will produce -> result.json, stdout.log, stderr.log  
+Then upload on S3
+
+
+Container pipeline: 
+
+Take Execrules          [call SpawnContainer()]
+    ↓
+Pull Container Image    [call pullContainerImage()]
+    ↓
+Prepare OCI specs       [call enforceContainerLimits()]
+    ↓
+Run Container           [call startContainer()]
+    ↓
+Produce result.json stdout.log stderr.log [startContainer() creates these artifacts]
+    ↓
+Upload to S3            [startContainer() uploads artifacts]
+    ↓
+Destroy container   [startContainer() destroys container during exit]
