@@ -2,6 +2,7 @@ package shared
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,7 +13,13 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func RMQConsumer(ctx context.Context, localQueue chan<- amqp.Delivery) {
+type RMQManager struct {
+	conn *amqp.Connection
+	ch   *amqp.Channel
+	q    amqp.Queue
+}
+
+func NewRMQManager(ctx context.Context) (*RMQManager, error) {
 
 	err := godotenv.Load()
 	if err != nil {
@@ -22,8 +29,7 @@ func RMQConsumer(ctx context.Context, localQueue chan<- amqp.Delivery) {
 
 	amqpURL := os.Getenv("RABBITMQ_URL_DEV")
 	if amqpURL == "" {
-		log.Println("RMQ url not found in environment!")
-		return
+		return nil, fmt.Errorf("RMQ url not found in environment!\n")
 	}
 
 	log.Printf("Connecting to RabbitMQ server at %s\n", amqpURL)
@@ -36,7 +42,7 @@ func RMQConsumer(ctx context.Context, localQueue chan<- amqp.Delivery) {
 
 		select {
 		case <-ctx.Done():
-			return
+			return nil, fmt.Errorf("Exiting RMQ Client service...\n")
 		case <-time.After(time.Duration(10*i) * time.Second):
 		}
 
@@ -75,8 +81,18 @@ func RMQConsumer(ctx context.Context, localQueue chan<- amqp.Delivery) {
 	)
 	failOnError(err, "Failed to declared queue")
 
-	msgs, err := ch.Consume(
-		q.Name,
+	return &RMQManager{
+		conn: conn,
+		ch:   ch,
+		q:    q,
+	}, nil
+}
+
+func (m *RMQManager) Subscribe(
+	ctx context.Context, localQueue chan<- amqp.Delivery,
+) error {
+	msgs, err := m.ch.Consume(
+		m.q.Name,
 		"runner_consumer",
 		false, // runner will send ACK later
 		false, // exclusive
@@ -91,16 +107,57 @@ func RMQConsumer(ctx context.Context, localQueue chan<- amqp.Delivery) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Stopping consumer loop...")
-			return
+			return fmt.Errorf("Stopping consumer loop...\n")
 		case msg, ok := <-msgs:
 			if !ok {
-				log.Println("RabbitMQ channel closed unexpectedly")
-				return
+				return fmt.Errorf("RabbitMQ channel closed unexpectedly\n")
 			}
 
 			//  naturally BLOCK here if localQueue reaches MAX_QUEUE_CAP.
 			localQueue <- msg
 		}
+	}
+}
+
+func (m *RMQManager) Publish(
+	ctx context.Context, queueName string, localQueue <-chan amqp.Publishing,
+) error {
+	targetQueue, err := m.ch.QueueDeclare(
+		queueName,
+		true,  // survive server restart
+		false, // no auto delete
+		false, // exclusive queue per runner service
+		true,  // wait
+		nil,
+	)
+	failOnError(err, "Failed to declared queue")
+
+	log.Println("Producer initialized. Ready to transmit payloads...")
+
+	// continuous loop to drain the channel safely without data loss
+	for msg := range localQueue {
+		// short 5-second timeout context strictly for this specific publish
+		pubCtx, pubCancel := context.WithTimeout(ctx, 5*time.Second)
+		err = m.ch.PublishWithContext(pubCtx, "", targetQueue.Name, false, false, msg)
+		pubCancel() // clean up context instantly inside the loop
+
+		if err != nil {
+			log.Printf("Failed to publish message: %v\n", err)
+			continue // continue for later messages
+		}
+
+		log.Printf("Sent message successfully! Type: %s, Body length: %d\n", msg.ContentType, len(msg.Body))
+	}
+	return nil
+}
+
+func (m *RMQManager) Close() {
+	if m.ch != nil {
+		m.ch.Close()
+		log.Println("RabbitMQ channel closed safely")
+	}
+	if m.conn != nil {
+		m.conn.Close()
+		log.Println("RabbitMQ server connection closed safely")
 	}
 }

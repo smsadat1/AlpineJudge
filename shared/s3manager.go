@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -56,6 +58,67 @@ func (m *S3Manager) UploadToS3(ctx context.Context, key string, fileBody io.Read
 
 	if err != nil {
 		return fmt.Errorf("failed to upload object to storage: %w", err)
+	}
+
+	return nil
+}
+
+func (m *S3Manager) DownloadFileFromS3(
+	ctx context.Context, bucket string, key string, ofileName string,
+) error {
+	result, err := m.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	defer result.Body.Close()
+
+	file, err := os.Create(ofileName)
+	if err != nil {
+		return fmt.Errorf("Couldn't create file %v. Reason: %v\n", ofileName, err)
+	}
+	defer file.Close()
+
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		return fmt.Errorf("Couldn't read object body from %v. Reason: %v\n", key, err)
+	}
+	_, err = file.Write(body)
+	return err
+}
+
+func (m *S3Manager) DownloadDirFromS3(
+	ctx context.Context, bucket string, keyPrefix string, ofileDir string,
+) error {
+	paginator := s3.NewListObjectsV2Paginator(m.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(keyPrefix),
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, obj := range page.Contents {
+			switch path.Base(*obj.Key) {
+			case "in.txt":
+				if err := m.DownloadFileFromS3(ctx, bucket, *obj.Key, ofileDir+"in.txt"); err != nil {
+					return err
+				}
+
+			case "out.txt":
+				if err := m.DownloadFileFromS3(ctx, bucket, *obj.Key, ofileDir+"out.txt"); err != nil {
+					return err
+				}
+
+			}
+		}
 	}
 
 	return nil
