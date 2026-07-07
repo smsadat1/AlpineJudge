@@ -22,3 +22,7 @@ sudo ./setup.sh runner --id runner-001 --env /path/to/.env
 ```
 
 
+## Setup confiugrations 
+Look into `/etc/alpinejudge/ajrunner/{runner_id}/` for Runner service's configuration file
+Look into `/etc/alpinejudge/ajdispatcher/` for Dispatcher service's configuration file
+Look into `/etc/systemd/systems/alpinjudge` to get systemd configurations
