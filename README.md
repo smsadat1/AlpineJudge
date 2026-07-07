@@ -15,9 +15,8 @@ A stateless, secure, multi-language code execution engine built for high perform
 * [Example Usage](#example-usage)
 * [Design Philosophy](#design-philosophy)
 * [Key Capabilities](#key-capabilities)
-* [Non Goals](#non-goals)
+* [Non Goals](#non-goal)
 * [Documentation](#documentation)
-* [Name](#name)
 
 
 ## About
@@ -35,21 +34,42 @@ AlpineJudge solves this by treating code execution as a hardened infrastructure 
 
 ## Getting Started
 
-  - Setup CLI
-  ```
-  coming soon ...
-  ```
+AlpineJudge can be used in two ways.
 
-  - Setup server (self-host)
-  ```
-  coming soon ...
-  ```
+### Option 1 — Use the Python SDK (Recommended)
 
+Install the SDK:
 
-## Example Usage
- ```
-  coming soon ...
-  ```
+```bash
+pip install alpinejudge-sdk
+```
+
+Submit a job:
+
+```python
+from alpinejudge import Client
+
+client = Client("<ALPINEJUDGE_URL>")
+
+result = client.submit(
+    language="python",
+    version="python3.12",
+    file="main.py",
+    testset="ts001",
+    testset_version="v1",
+)
+
+print(result.status)
+```
+See the [Python SDK documentation](docs/sdk/pythonexamples.md) for more examples.
+
+---
+
+### Option 2 — Self Host AlpineJudge
+
+To deploy your own Dispatcher and Runner instances, follow the installation guide.
+
+**See [INSTALLATION.md](docs/INSTALLATIONS.md)**
 
 
 ## Design Philosophy
@@ -79,7 +99,6 @@ Execution flow:
   - Versioned runtime support (e.g. Python 3.10 C++17 Go 1.22 )
   - Secure sandboxed execution using gVisor
   - Websocket based execution status streaming
-  - Historical records of executions with timestamps
 
 
 
@@ -93,8 +112,8 @@ AlpineJudge focuses solely on validating, scheduling, executing, and evaluating 
 
 Detailed technical documentation is available in `/docs`:
 
-  - Architecture -> `docs/architecture.md`
-  - Execution engine -> `docs/runner.md`
-  - Security model -> `docs/security.md`
-  - API references -> `docs/api.md`
-  - Design decisions -> `docs/design-decisions.md`
+  - Architecture -> `docs/ARCHITECTURE.md`
+  - API references -> `docs/API.md`
+  - Design decisions -> `docs/adrs`
+  - Subsystem documentation (dispatcher) -> `docs/subsystems/dispatcher.md`
+  - Subsystem documentation (runner) -> `docs/subsystems/runner`
