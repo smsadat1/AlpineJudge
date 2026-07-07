@@ -61,6 +61,13 @@ result = client.submit(
 
 print(result.status)
 ```
+
+**Replace <ALPINEJUDGE_URL> with:**
+
+- http://localhost:4004 if you're running a local self-hosted instance.
+- The URL of your organization's AlpineJudge deployment.
+- The URL of a hosted AlpineJudge service.
+
 See the [Python SDK documentation](docs/sdk/pythonexamples.md) for more examples.
 
 ---
