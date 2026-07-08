@@ -20,8 +20,8 @@ languages:
 
   java:
     versions:
-      - java14
-      - java16
+      - java25
+      - java26
 
   node:
     versions:
