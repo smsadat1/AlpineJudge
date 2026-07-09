@@ -13,7 +13,7 @@ import (
 
 // manages entire container lifecycle
 func ExecSubmission(
-	ctx context.Context, client *containerd.Client, s3m shared.S3Manager, configPath string, jobspec utils.JobSpec,
+	ctx context.Context, client *containerd.Client, s3m shared.S3Manager, configPath string, jobspec utils.JobSpec, rmqm shared.RMQManager,
 ) (utils.ResultSpec, error) {
 
 	// 1. Prepare execution rules
@@ -41,11 +41,7 @@ func ExecSubmission(
 	}
 	log.Printf("Successfully initiated container with ID %s and snapshot with ID %v", container.ID(), snapshotID)
 
-	// 4. Manage the running continer & destroy before exit
-	result, err := manageContainer(ctx, container, rules)
-	if err != nil {
-		return utils.ResultSpec{}, err
-	}
-
+	// 4. Manage the running continer, run tests & destroy before exit
+	result := execSubm(ctx, container, rules, jobspec, rmqm)
 	return result, nil
 }

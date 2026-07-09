@@ -11,6 +11,11 @@ import (
 	"shared"
 )
 
+var (
+	HostTestFilePath string
+	HostSrcFilePath  string
+)
+
 func loadResLimits(configdata []byte, execr *utils.ExecRules) error {
 
 	if err := yaml.Unmarshal(configdata, &execr); err != nil {
@@ -29,7 +34,7 @@ func downloadFileS3(
 		return err
 	}
 
-	if err := s3m.DownloadDirFromS3(ctx, bucket, srcCodeS3key, hostTestFileDir); err != nil {
+	if err := s3m.DownloadDirFromS3(ctx, bucket, testsetS3key, hostTestFileDir); err != nil {
 		return err
 	}
 
@@ -52,7 +57,14 @@ func prepareExecrules(
 	if language == "c" || language == "cpp" {
 		containerImage = "alpinejudge/gcc"
 
-		cmdArgs = append(cmdArgs, "/usr/bin/gcc")
+		if language == "c" {
+			cmdArgs = append(cmdArgs, "/usr/bin/gcc")
+		}
+
+		if language == "cpp" {
+			cmdArgs = append(cmdArgs, "/usr/bin/g++")
+		}
+
 		switch version {
 		case "c99":
 			cmdArgs = append(cmdArgs, "-std=c99")
@@ -146,6 +158,10 @@ func prepareExecrules(
 	if err != nil {
 		return err, utils.ExecRules{}
 	}
+
+	// for other service's usage
+	HostSrcFilePath = hostSrcFilePath
+	HostTestFilePath = hostTestFileDir
 
 	execRules := utils.ExecRules{
 		ContainerID:          jobID,
