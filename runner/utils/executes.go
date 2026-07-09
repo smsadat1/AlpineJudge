@@ -1,5 +1,14 @@
 package utils
 
+import (
+	"bufio"
+	"context"
+	"io"
+	"shared"
+
+	"github.com/rabbitmq/amqp091-go"
+)
+
 type ExecRules struct {
 	// system
 	ContainerID string
@@ -12,6 +21,8 @@ type ExecRules struct {
 	TestsetPathHost      string
 	TestsetPathContainer string
 	Env                  map[string]string
+	OutStreamQueueName   string
+	ErrStreamQueueName   string
 
 	// rules
 	MemoryLimitMB  uint64
@@ -20,4 +31,15 @@ type ExecRules struct {
 	NoNewPrivilege bool
 	ReadOnlyRootfs bool
 	Timeoutsec     uint32
+}
+
+// stream real time logs from container
+func StreamContainerLogsToRMQ(
+	ctx context.Context, queuename string, reader io.Reader, rmqm shared.RMQManager, localQueue <-chan amqp091.Publishing,
+) {
+	scanner := bufio.NewScanner(reader)
+	scanner.Err()
+	for scanner.Scan() {
+		rmqm.Publish(ctx, queuename, localQueue)
+	}
 }

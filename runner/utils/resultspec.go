@@ -3,16 +3,16 @@ package utils
 type Verdict string
 
 const (
-	VerdictAC  Verdict = "AC"
-	VerdictWA  Verdict = "WA"
-	VerdictTLE Verdict = "TLE"
-	VerdictMLE Verdict = "MLE"
-	VerdictOLE Verdict = "OLE"
-	VerdictCE  Verdict = "CE"
-	VerdictRE  Verdict = "RE"
-	VerdictIE  Verdict = "IE"
-	VerdictPE  Verdict = "PE"
-	VerdictSE  Verdict = "SE"
+	VerdictAC  Verdict = "AC"  // accepted
+	VerdictWA  Verdict = "WA"  // wrong answer
+	VerdictTLE Verdict = "TLE" // time limit exceeded
+	VerdictMLE Verdict = "MLE" // memeory limit exceeded
+	VerdictOLE Verdict = "OLE" // output limit exceeded
+	VerdictCE  Verdict = "CE"  // compilation error
+	VerdictRE  Verdict = "RE"  // runtime error
+	VerdictIE  Verdict = "IE"  // internal error
+	VerdictPE  Verdict = "PE"  // presentation error
+	VerdictSE  Verdict = "SE"  //
 )
 
 type ResultSpec struct {

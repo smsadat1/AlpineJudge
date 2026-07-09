@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"log"
-	"os"
 	"shared"
 	"syscall"
 	"time"
@@ -21,6 +20,8 @@ func execSubm(
 	ctx context.Context, container containerd.Container, rules utils.ExecRules, jobspec utils.JobSpec, rmqm shared.RMQManager,
 ) utils.ResultSpec {
 
+	var status containerd.ExitStatus
+
 	result := utils.ResultSpec{
 		SubmissionId: jobspec.SubmissionID,
 		Language:     jobspec.Language,
@@ -31,11 +32,12 @@ func execSubm(
 	// synchronous unix pipe for read & write
 	stdoutReader, stdoutWriter := io.Pipe()
 	stderrReader, stderrWriter := io.Pipe()
+
 	localQueue := make(chan amqp091.Publishing, 100)
 
 	task, err := container.NewTask(
 		ctx,
-		cio.NewCreator(cio.WithStreams(os.Stdin, stdoutWriter, stderrWriter)),
+		cio.NewCreator(cio.WithStreams(nil, stdoutWriter, stderrWriter)),
 	)
 	if err != nil {
 		result.Status = utils.VerdictIE
@@ -43,6 +45,10 @@ func execSubm(
 	}
 
 	defer task.Delete(ctx)
+	defer stdoutWriter.Close()
+	defer stderrWriter.Close()
+	defer stdoutReader.Close()
+	defer stderrReader.Close()
 
 	// get real time log stream
 	go utils.StreamContainerLogsToRMQ(ctx, rules.OutStreamQueueName, stdoutReader, rmqm, localQueue)
@@ -67,7 +73,7 @@ func execSubm(
 
 	// dynamic wait block
 	select {
-	case status := <-statusC:
+	case status = <-statusC:
 
 		log.Println("Task completed.")
 		if status.Error() != nil {
@@ -90,7 +96,6 @@ func execSubm(
 	}
 
 	// block till exit status
-	status := <-statusC
 	if status.Error() != nil {
 		result.Status = utils.VerdictWA
 		return result
