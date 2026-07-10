@@ -1,6 +1,12 @@
 go 1.26.3
 
 use (
+	./dispatcher
 	./runner
+	./shared
+	
+	./tests/testdispatcher
+	./tests/testrmqpipeline
 	./tests/testrunner
+	./tests/tests3manager
 )

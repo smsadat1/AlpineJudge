@@ -4,9 +4,9 @@
 
 A stateless, secure, multi-language code execution engine built for high performance and easy deployment.
 
-![Status](https://img.shields.io/badge/status-active-brightgreen)
-![Architecture](https://img.shields.io/badge/microservices-enabled-blue)
-![Sandbox](https://img.shields.io/badge/isolation-gVisor-red)
+![Status](https://img.shields.io/badge/status-ongoing-brightgreen)
+![Architecture](https://img.shields.io/badge/stateless-enabled-blue)
+![Security](https://img.shields.io/badge/isolation-containerd-red)
 
 
 ## Table of Contents
