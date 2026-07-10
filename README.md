@@ -1,6 +1,6 @@
 # AlpineJudge
 
-![banner](docs/assets/banner2.png)
+![banner](docs/assets/banner3.png)
 
 A stateless, secure, multi-language code execution engine built for high performance and easy deployment.
 
