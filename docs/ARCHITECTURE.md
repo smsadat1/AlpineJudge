@@ -1,5 +1,7 @@
 # Architecture
 
+![Archdiagram](assets/archdiagram2.png)
+
 ## Overview
 
 AlpineJudge is a **stateless, distributed code execution engine** designed for secure, scalable and high-performance program execution.

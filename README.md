@@ -13,7 +13,7 @@ A stateless, secure, multi-language code execution engine built for high perform
 * [About](#about)
 * [Getting Started](#getting-started)
 * [Example Usage](#example-usage)
-* [Design Philosophy](#design-philosophy)
+* [Architecture & Design Philosophy](#architecture--design-philosophy)
 * [Key Capabilities](#key-capabilities)
 * [Non Goals](#non-goal)
 * [Documentation](#documentation)
@@ -79,7 +79,9 @@ To deploy your own Dispatcher and Runner instances, follow the installation guid
 **See [INSTALLATION.md](docs/INSTALLATIONS.md)**
 
 
-## Design Philosophy
+## Architecture & Design Philosophy
+
+![Architecture](docs/assets/archdiagram2.png)
 
 AlpineJudge is designed around statelessness, isolation, predictability and reproducibility when executing untrusted code.
 
