@@ -33,6 +33,19 @@ type ExecRules struct {
 	Timeoutsec     uint32
 }
 
+// execution specification for in-container agent
+type AgentExecSpec struct {
+	// execution
+	HasCompilePhase bool
+	CompileArgs     []string
+	RunArgs         []string
+	TestsetPath     string
+
+	// resource
+	LogLimitKB uint64
+	Timeoutsec uint32
+}
+
 // stream real time logs from container
 func StreamContainerLogsToRMQ(
 	ctx context.Context, queuename string, reader io.Reader, rmqm shared.RMQManager, localQueue <-chan amqp091.Publishing,

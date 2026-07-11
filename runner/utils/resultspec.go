@@ -12,7 +12,7 @@ const (
 	VerdictRE  Verdict = "RE"  // runtime error
 	VerdictIE  Verdict = "IE"  // internal error
 	VerdictPE  Verdict = "PE"  // presentation error
-	VerdictSE  Verdict = "SE"  //
+	VerdictSE  Verdict = "SE"  // security error
 )
 
 type ResultSpec struct {
