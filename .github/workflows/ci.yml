@@ -30,32 +30,32 @@ jobs:
         module: [ 'shared']
 
     steps:
-    - name: Start MinIO
-      run: |
-        docker run -d \
-          --name minio \
-          -p 9000:9000 \
-          -e MINIO_ROOT_USER=minioadmin \
-          -e MINIO_ROOT_PASSWORD=minioadminpassword \
-          minio/minio:RELEASE.2023-08-29T23-07-35Z \
-          server /data
-
-    - name: Wait for MinIO
-      run: |
-        until curl -f http://localhost:9000/minio/health/live; do
-          sleep 2
-        done
-
-        - name: Run Module Tests
-          #  change working directory dynamically to target each sub-module
-          working-directory: ${{ matrix.module }}
-          run: |
-            go mod tidy
-            go test -v ./...
-
-    - name: Checkout Code
-      uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.26'
+      - name: Checkout Code
+        uses: actions/checkout@v4
+    
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+        
+      - name: Start MinIO
+        run: |
+          docker run -d \
+            --name minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadminpassword \
+            minio/minio:RELEASE.2023-08-29T23-07-35Z \
+            server /data
+        
+      - name: Wait for MinIO
+        run: |
+          until curl -f http://localhost:9000/minio/health/live; do
+            sleep 2
+          done
+        
+      - name: Run Module Tests
+        working-directory: ${{ matrix.module }}
+        run: |
+          go mod tidy
+          go test -v ./...
