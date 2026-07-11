@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -49,7 +51,7 @@ func InitS3Manager(
 }
 
 // UploadToS3 streams an item up into the configured storage instance
-func (m *S3Manager) UploadToS3(ctx context.Context, key string, fileBody io.Reader) error {
+func (m *S3Manager) UploadFileToS3(ctx context.Context, key string, fileBody io.Reader) error {
 	_, err := m.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(m.bucket),
 		Key:    aws.String(key),
@@ -58,6 +60,55 @@ func (m *S3Manager) UploadToS3(ctx context.Context, key string, fileBody io.Read
 
 	if err != nil {
 		return fmt.Errorf("failed to upload object to storage: %w", err)
+	}
+
+	return nil
+}
+
+func (m *S3Manager) UploadDirToS3(ctx context.Context, keyPrefix string, dirPath string) error {
+
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		// only upload regular files
+		if !d.Type().IsRegular() {
+			return nil
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return fmt.Errorf("opening %s: %w", path, err)
+		}
+
+		relPath, err := filepath.Rel(dirPath, path)
+		if err != nil {
+			file.Close()
+			return err
+		}
+
+		s3Key := filepath.ToSlash(filepath.Join(keyPrefix, relPath))
+
+		err = m.UploadFileToS3(ctx, s3Key, file)
+		closeErr := file.Close()
+
+		if err != nil {
+			return err
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
 
 	return nil

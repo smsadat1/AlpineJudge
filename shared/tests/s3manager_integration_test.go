@@ -32,11 +32,29 @@ func TestS3Manager(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s3key := "submission/s001/main.py"
-	fileBody, err := os.Open("hudai.py")
+	prefix := "testsets/"
+	s3key := "submissions/s001/main.py"
+	ofile := "artifacts/hudai.py"
+
+	fileBody, err := os.Open("artifacts/main.py")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s3m.UploadToS3(ctx, s3key, fileBody)
 
+	if err := s3m.UploadFileToS3(ctx, s3key, fileBody); err != nil {
+		t.Fatal(err)
+	}
+	if err := s3m.UploadDirToS3(ctx, prefix, "artifacts/ts001"); err != nil {
+		t.Fatal(err)
+	}
+
+	err = s3m.DownloadFileFromS3(ctx, os.Getenv("TEST_S3_BUCKET_NAME"), s3key, ofile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = s3m.DownloadDirFromS3(ctx, os.Getenv("TEST_S3_BUCKET_NAME"), prefix, "artifacts/ts002/")
+	if err != nil {
+		t.Fatal(err)
+	}
 }

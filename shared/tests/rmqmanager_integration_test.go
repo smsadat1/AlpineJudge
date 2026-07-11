@@ -30,13 +30,13 @@ func TestRMQPipeline_Integration(t *testing.T) {
 	jobSpecsQueue := make(chan amqp.Delivery, 5)
 
 	go func() {
-		if err := rmqm.Publish(ctx, os.Getenv("RABBITMQ_QUEUE_NAME"), localQueue); err != nil {
+		if err := rmqm.Publish(ctx, localQueue); err != nil {
 			t.Logf("Producer exited: %v\n", err)
 		}
 	}()
 
 	go func() {
-		if err := rmqm.Subscribe(ctx, jobSpecsQueue); err != nil {
+		if err := rmqm.Subscribe(ctx, jobSpecsQueue, "test-rmq-consumer"); err != nil {
 			t.Logf("Consumer exited: %v\n", err)
 		}
 	}()

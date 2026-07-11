@@ -13,7 +13,6 @@ import (
 
 type RMQManager struct {
 	conn *amqp.Connection
-	ch   *amqp.Channel
 	q    amqp.Queue
 }
 
@@ -33,24 +32,22 @@ func NewRMQManager(ctx context.Context, amqpURL string) (*RMQManager, error) {
 		case <-time.After(time.Duration(10*i) * time.Second):
 		}
 
-		if i <= 6 {
+		if i < 6 {
 			i++
-		} else {
-			i = 6
 		}
 		conn, err = amqp.Dial(amqpURL)
 	}
-	defer conn.Close()
 
 	log.Println("Connected to RabbitMQ server")
 
-	ch, err := conn.Channel()
+	// a temporary channel just to configure topology and declare the queue
+	initCh, err := conn.Channel()
 	failOnError(err, "Failed to open channel")
-	defer ch.Close()
+	defer initCh.Close()
 	log.Println("Opened channel")
 
 	maxQueueCap, _ := strconv.Atoi(os.Getenv("MAX_QUEUE_CAP"))
-	err = ch.Qos(
+	err = initCh.Qos(
 		maxQueueCap,
 		0,     // prefetch size
 		false, // global
@@ -58,33 +55,45 @@ func NewRMQManager(ctx context.Context, amqpURL string) (*RMQManager, error) {
 	failOnError(err, "Failed to set QoS backpressure")
 
 	queueName := os.Getenv("RABBITMQ_QUEUE_NAME")
-	q, err := ch.QueueDeclare(
+	q, err := initCh.QueueDeclare(
 		queueName,
 		true,  // survive server restart
 		false, // no auto delete
 		false, // exclusive queue per runner service
-		true,  // wait
+		false, // wait
 		nil,
 	)
 	failOnError(err, "Failed to declared queue")
 
 	return &RMQManager{
 		conn: conn,
-		ch:   ch,
 		q:    q,
 	}, nil
 }
 
 func (m *RMQManager) Subscribe(
-	ctx context.Context, localQueue chan<- amqp.Delivery,
+	ctx context.Context, localQueue chan<- amqp.Delivery, consumerName string,
 ) error {
-	msgs, err := m.ch.Consume(
+
+	// open a dedicated channel
+	consumerCh, err := m.conn.Channel()
+	if err != nil {
+		return fmt.Errorf("failed to open dedicated consumer channel: %w", err)
+	}
+	defer consumerCh.Close() // auto clean up channel
+
+	// apply QoS prefetch backpressure limit directly to this channel
+	if err := consumerCh.Qos(cap(localQueue), 0, false); err != nil {
+		return fmt.Errorf("failed to set consumer QoS prefetch: %w", err)
+	}
+
+	msgs, err := consumerCh.Consume(
 		m.q.Name,
-		"runner_consumer",
+		consumerName,
 		false, // runner will send ACK later
 		false, // exclusive
 		true,  // no local
-		true,  // no wait
+		false, // no wait
 		nil,   // args
 	)
 	failOnError(err, "Failed to register consumer")
@@ -107,25 +116,24 @@ func (m *RMQManager) Subscribe(
 }
 
 func (m *RMQManager) Publish(
-	ctx context.Context, queueName string, localQueue <-chan amqp.Publishing,
+	ctx context.Context, localQueue <-chan amqp.Publishing,
 ) error {
-	targetQueue, err := m.ch.QueueDeclare(
-		queueName,
-		true,  // survive server restart
-		false, // no auto delete
-		false, // exclusive queue per runner service
-		true,  // wait
-		nil,
-	)
-	failOnError(err, "Failed to declared queue")
+
+	// a completely isolated channel dedicated to publishing tasks
+	prodCh, err := m.conn.Channel()
+	if err != nil {
+		return fmt.Errorf("Failed to open dedicated producer channel: %w\n", err)
+	}
+	defer prodCh.Close()
 
 	log.Println("Producer initialized. Ready to transmit payloads...")
 
 	// continuous loop to drain the channel safely without data loss
 	for msg := range localQueue {
 		// short 5-second timeout context strictly for this specific publish
+
 		pubCtx, pubCancel := context.WithTimeout(ctx, 5*time.Second)
-		err = m.ch.PublishWithContext(pubCtx, "", targetQueue.Name, false, false, msg)
+		err := prodCh.PublishWithContext(pubCtx, "", m.q.Name, false, false, msg)
 		pubCancel() // clean up context instantly inside the loop
 
 		if err != nil {
@@ -138,11 +146,8 @@ func (m *RMQManager) Publish(
 	return nil
 }
 
+// close gracefully terminates the root network connection handle
 func (m *RMQManager) Close() {
-	if m.ch != nil {
-		m.ch.Close()
-		log.Println("RabbitMQ channel closed safely")
-	}
 	if m.conn != nil {
 		m.conn.Close()
 		log.Println("RabbitMQ server connection closed safely")
