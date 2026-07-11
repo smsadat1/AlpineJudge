@@ -1,14 +1,15 @@
-package testrunner
+package tests
 
 import (
 	"context"
-	"local/runner/rmq"
-	"local/runner/utils"
 	"testing"
 	"time"
 
 	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
+
+	"local/runner/utils"
+	"shared"
 )
 
 func TestLiveRabbitMQIntegration(t *testing.T) {
@@ -25,14 +26,14 @@ func TestLiveRabbitMQIntegration(t *testing.T) {
 
 	// start bg process to wait for data
 	go func() {
-		_ = rmq.ProcessJobSpec(ctx, localQueue, func(job utils.JobSpec) {
+		_ = utils.ProcessJobSpec(ctx, localQueue, func(job utils.JobSpec) {
 			callbackCalled = true
 			recievedJob = job
 			close(done)
 		})
 	}()
 
-	rmq.ConnectRMQ(ctx, localQueue)
+	shared.RMQConsumer(ctx, localQueue)
 
 	select {
 	case <-done:

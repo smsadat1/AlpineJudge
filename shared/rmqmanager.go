@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
-	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -19,18 +17,7 @@ type RMQManager struct {
 	q    amqp.Queue
 }
 
-func NewRMQManager(ctx context.Context) (*RMQManager, error) {
-
-	err := godotenv.Load()
-	if err != nil {
-		// fallback: If running from repo_root/, look explicitly inside /runner/.env
-		_ = godotenv.Load(filepath.Join("runner", ".env"))
-	}
-
-	amqpURL := os.Getenv("RABBITMQ_URL_DEV")
-	if amqpURL == "" {
-		return nil, fmt.Errorf("RMQ url not found in environment!\n")
-	}
+func NewRMQManager(ctx context.Context, amqpURL string) (*RMQManager, error) {
 
 	log.Printf("Connecting to RabbitMQ server at %s\n", amqpURL)
 

@@ -1,4 +1,4 @@
-package testrunner
+package tests
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"local/runner/rmq"
 	"local/runner/utils"
 )
 
@@ -35,7 +34,7 @@ func TestProcessJobSpec_ValidJSON(t *testing.T) {
 	var recievedJob utils.JobSpec
 	callbackCalled := false
 
-	err := rmq.ProcessJobSpec(ctx, localQueue, func(job utils.JobSpec) {
+	err := utils.ProcessJobSpec(ctx, localQueue, func(job utils.JobSpec) {
 		callbackCalled = true
 		recievedJob = job
 	})
