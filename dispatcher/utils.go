@@ -18,13 +18,3 @@ type JobSpec struct {
 	Testset        string `json:"testset"`
 	TestsetVersion string `json:"testset_version"`
 }
-
-func IsLanguageSupported(lang, version string) bool {
-	versions, ok := AvailableLanguages[lang]
-	if !ok {
-		return false
-	}
-
-	_, ok = versions[version]
-	return ok
-}

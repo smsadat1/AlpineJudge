@@ -1,4 +1,4 @@
-package dispatcher
+package shared
 
 import (
 	"fmt"
@@ -27,6 +27,11 @@ func LoadConfigs(pathToConfig string) error {
 		return fmt.Errorf("Failed to open config(%v): %v", pathToConfig, err)
 	}
 
+	// allocate memory for the outer global map if it hasn't been initialized yet
+	if AvailableLanguages == nil {
+		AvailableLanguages = make(map[string]map[string]struct{})
+	}
+
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return fmt.Errorf("Failed to unmarshal config(%v): %w", pathToConfig, err)
@@ -43,4 +48,14 @@ func LoadConfigs(pathToConfig string) error {
 	}
 
 	return nil
+}
+
+func IsLanguageSupported(lang, version string) bool {
+	versions, ok := AvailableLanguages[lang]
+	if !ok {
+		return false
+	}
+
+	_, ok = versions[version]
+	return ok
 }

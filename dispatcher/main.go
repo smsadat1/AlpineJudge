@@ -18,7 +18,7 @@ func main() {
 	}
 
 	log.Println("Loading dispatcher configuration")
-	if err := LoadConfigs("/etc/alpinejudge/dispatcher/config.yaml"); err != nil {
+	if err := shared.LoadConfigs("/etc/alpinejudge/dispatcher/config.yaml"); err != nil {
 		log.Fatalf("%v", err)
 	}
 

@@ -28,7 +28,7 @@ func ValidateSubmission(ctx context.Context, s3m shared.S3Manager, submission Su
 	}
 
 	// check language & version availability
-	ok = IsLanguageSupported(language, version)
+	ok = shared.IsLanguageSupported(language, version)
 	if !ok {
 		return fmt.Errorf("Unsupported language or version [Lang: %v Ver: %v]", language, version)
 	}
@@ -58,7 +58,7 @@ func PrepareSubmission(ctx context.Context, s3m shared.S3Manager, submission Sub
 	body := strings.NewReader(source)
 	s3key := submission.SubmissionID + "/" + string(jobID)
 
-	if err := s3m.UploadToS3(ctx, s3key, body); err != nil {
+	if err := s3m.UploadFileToS3(ctx, s3key, body); err != nil {
 		return JobSpec{}, err
 	}
 

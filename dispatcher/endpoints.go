@@ -67,7 +67,7 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	execEventQueue := make(chan amqp.Delivery)
-	if err := env.rmqm.Subscribe(*env.ctx, execEventQueue); err != nil {
+	if err := env.rmqm.Subscribe(*env.ctx, execEventQueue, "sse-consumer"); err != nil {
 		http.Error(w, "Execution event queue failed!", http.StatusInternalServerError)
 		return
 	}

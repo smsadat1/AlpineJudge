@@ -1,23 +1,26 @@
 package tests
 
 import (
+	"shared"
 	"slices"
 	"testing"
-
-	"dispatcher"
 )
 
 func Test_CfgManager(t *testing.T) {
-	if err := dispatcher.LoadConfigs("../../dispatcher/config.example.yaml"); err != nil {
+
+	// reset global map state to prevent cross-test contamination
+	shared.AvailableLanguages = make(map[string]map[string]struct{})
+
+	if err := shared.LoadConfigs("artifacts/config.example.yaml"); err != nil {
 		t.Logf("%v", err)
 	}
 
-	cVersions := dispatcher.AvailableLanguages["c"]
-	cppVersions := dispatcher.AvailableLanguages["cpp"]
-	goVersions := dispatcher.AvailableLanguages["go"]
-	javaVersions := dispatcher.AvailableLanguages["java"]
-	nodeVersions := dispatcher.AvailableLanguages["node"]
-	pythonVersions := dispatcher.AvailableLanguages["python"]
+	cVersions := shared.AvailableLanguages["c"]
+	cppVersions := shared.AvailableLanguages["cpp"]
+	goVersions := shared.AvailableLanguages["go"]
+	javaVersions := shared.AvailableLanguages["java"]
+	nodeVersions := shared.AvailableLanguages["node"]
+	pythonVersions := shared.AvailableLanguages["python"]
 
 	_, hasC99 := cVersions["c99"]
 	_, hasC11 := cVersions["c11"]
@@ -38,14 +41,14 @@ func Test_CfgManager(t *testing.T) {
 	_, hasGo124 := goVersions["go1.24"]
 	_, hasGo126 := goVersions["go1.26"]
 
-	if len(goVersions) != 3 || !hasGo124 || !hasGo126 {
+	if len(goVersions) != 2 || !hasGo124 || !hasGo126 {
 		t.Error("go versions mismatched")
 	}
 
-	_, hasJava14 := javaVersions["java14"]
-	_, hasJava16 := javaVersions["java16"]
+	_, hasJava14 := javaVersions["java25"]
+	_, hasJava16 := javaVersions["java26"]
 
-	if len(javaVersions) != 3 || !hasJava14 || !hasJava16 {
+	if len(javaVersions) != 2 || !hasJava14 || !hasJava16 {
 		t.Error("java versions mismatched")
 	}
 
@@ -63,7 +66,7 @@ func Test_CfgManager(t *testing.T) {
 		t.Error("python versions mismatched")
 	}
 
-	availRunners := dispatcher.AvailableRunners
+	availRunners := shared.AvailableRunners
 	expectedRunners := []string{"runner-001", "runner-002"}
 
 	slices.Sort(availRunners)
