@@ -1,0 +1,59 @@
+name: AlpineJudge Tests
+
+on: 
+  push: 
+      branches: [main]
+  pull_request:
+      branches: [main]
+
+jobs:
+  test: 
+    runs-on: ubuntu-latest
+        
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+          
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+      minio:
+        image: quay.io/minio/minio:latest
+        ports:
+          - 9000:9000
+          - 9090:9090
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadminpassword
+          MINIO_VOLUMES: /data
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        # List every directory that contains a go.mod file | dispatcher, runner & tests module will be added later
+        module: [ 'shared']
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Run Module Tests
+      #  change working directory dynamically to target each sub-module
+      working-directory: ${{ matrix.module }}
+      run: |
+        go mod tidy
+        go test -v ./...
