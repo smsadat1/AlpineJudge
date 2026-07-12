@@ -1,1 +1,0 @@
-print("Hudai Python program")

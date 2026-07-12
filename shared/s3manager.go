@@ -50,6 +50,26 @@ func InitS3Manager(
 	}, nil
 }
 
+func (m *S3Manager) CreateABucket(ctx context.Context, bucketName string) (*s3.CreateBucketOutput, error) {
+
+	s3i := s3.CreateBucketInput{Bucket: &bucketName}
+	crbo, err := m.client.CreateBucket(ctx, &s3i)
+	if err != nil {
+		return &s3.CreateBucketOutput{}, fmt.Errorf("failed to create bucket %s: %w\n", bucketName, err)
+	}
+	return crbo, nil
+}
+
+func (m *S3Manager) DeleteABucket(ctx context.Context, bucketName string) error {
+	_, err := m.client.DeleteBucket(ctx, &s3.DeleteBucketInput{
+		Bucket: &bucketName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete bucket %s: %w", bucketName, err)
+	}
+	return nil
+}
+
 // UploadToS3 streams an item up into the configured storage instance
 func (m *S3Manager) UploadFileToS3(ctx context.Context, key string, fileBody io.Reader) error {
 	_, err := m.client.PutObject(ctx, &s3.PutObjectInput{

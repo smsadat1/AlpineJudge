@@ -13,7 +13,7 @@ func TestS3Manager(t *testing.T) {
 	t.Setenv("TEST_S3_URL", "http://localhost:9000")
 	t.Setenv("TEST_S3_USERNAME", "minioadmin")
 	t.Setenv("TEST_S3_PASSWORD", "minioadminpassword")
-	t.Setenv("TEST_S3_BUCKET_NAME", "ajbucket")
+	t.Setenv("TEST_S3_BUCKET_NAME", "ajtestbucket")
 	t.Setenv("TEST_S3_REGION_NAME", "us-east-1")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -31,6 +31,8 @@ func TestS3Manager(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	s3m.CreateABucket(ctx, os.Getenv("TEST_S3_BUCKET_NAME"))
 
 	prefix := "testsets/"
 	s3key := "submissions/s001/main.py"
