@@ -53,6 +53,6 @@ func StreamContainerLogsToRMQ(
 	scanner := bufio.NewScanner(reader)
 	scanner.Err()
 	for scanner.Scan() {
-		rmqm.Publish(ctx, queuename, localQueue)
+		rmqm.Publish(ctx, localQueue)
 	}
 }

@@ -1,4 +1,0 @@
-1. Build the in-container agent 
-2. Refactor runner subsystem around the agent based flow
-3. Complete http server implementation
-

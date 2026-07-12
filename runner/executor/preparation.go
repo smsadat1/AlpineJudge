@@ -2,10 +2,6 @@ package executor
 
 import (
 	"context"
-	"fmt"
-	"os"
-
-	"gopkg.in/yaml.v3"
 
 	"local/runner/utils"
 	"shared"
@@ -15,14 +11,6 @@ var (
 	HostTestFilePath string
 	HostSrcFilePath  string
 )
-
-func loadResLimits(configdata []byte, execr *utils.ExecRules) error {
-
-	if err := yaml.Unmarshal(configdata, &execr); err != nil {
-		return fmt.Errorf("Failed to unmarshal config\n")
-	}
-	return nil
-}
 
 func downloadFileS3(
 	ctx context.Context, s3m shared.S3Manager,
@@ -42,7 +30,7 @@ func downloadFileS3(
 }
 
 func prepareExecrules(
-	ctx context.Context, s3m shared.S3Manager, configPath string, jobspec utils.JobSpec,
+	ctx context.Context, s3m shared.S3Manager, jobspec shared.JobSpec,
 ) (error, utils.ExecRules) {
 
 	jobID := jobspec.JobId
@@ -164,21 +152,22 @@ func prepareExecrules(
 	HostTestFilePath = hostTestFileDir
 
 	execRules := utils.ExecRules{
-		ContainerID:          jobID,
-		Args:                 cmdArgs,
-		Image:                containerImage,
+		ContainerID: jobID,
+		Image:       containerImage,
+		Args:        cmdArgs,
+
 		CodePathHost:         hostSrcFilePath,
 		CodePathContainer:    containerSrcFilePath,
 		TestsetPathHost:      hostTestFileDir,
 		TestsetPathContainer: containerTestFileDir,
-	}
 
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("Failed to open config(%v): %v", configPath, err), execRules
+		CpuQuota:       float64(utils.CPUQuota),
+		MemoryLimitMB:  utils.MemoryLimitMB,
+		NoNewPrivilege: utils.NoNewPrivs,
+		PidLimit:       int64(utils.PIDLimit),
+		Timeoutsec:     uint32(utils.TimeoutSec),
+		ReadOnlyRootfs: utils.RORootFS,
 	}
-
-	loadResLimits(data, &execRules)
 
 	return nil, execRules
 }

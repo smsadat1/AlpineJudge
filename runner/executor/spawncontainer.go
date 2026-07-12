@@ -13,11 +13,11 @@ import (
 
 // manages entire container lifecycle
 func ExecSubmission(
-	ctx context.Context, client *containerd.Client, s3m shared.S3Manager, configPath string, jobspec utils.JobSpec, rmqm shared.RMQManager,
+	ctx context.Context, client *containerd.Client, s3m shared.S3Manager, jobspec shared.JobSpec, rmqm shared.RMQManager,
 ) (utils.ResultSpec, error) {
 
 	// 1. Prepare execution rules
-	err, rules := prepareExecrules(ctx, s3m, configPath, jobspec)
+	err, rules := prepareExecrules(ctx, s3m, jobspec)
 	if err != nil {
 		return utils.ResultSpec{}, fmt.Errorf("Failed to generate execution rules\n")
 	}

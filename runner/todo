@@ -1,0 +1,6 @@
+DONE | -2. Fix bucket creation issue
+DONE | -1. Complete main() of runner subsystem
+0. Implement dispatcher & runner specific config loader
+1. Move tests for configs to subsystems
+2. Complete unit & e2e tests for dispatcher subsystem
+3. Complete unit &e2e tests for runner subsystem 
