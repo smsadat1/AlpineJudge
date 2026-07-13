@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -17,6 +19,8 @@ type ServerEnv struct {
 	ctx  *context.Context
 	s3m  *shared.S3Manager
 	rmqm *shared.RMQManager
+
+	bucket string
 }
 
 func (env *ServerEnv) ResponseRootHanlder(w http.ResponseWriter, r *http.Request) {
@@ -39,9 +43,35 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// wrong submission
-	if err = ValidateSubmission(*env.ctx, *env.s3m, submission); err != nil {
+	/*
+		Using the incoming request's context so if the user closes the browser early,
+		downstream validations stop immediately.
+	*/
+	if err = ValidateSubmission(r.Context(), *env.s3m, submission); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// marshall requests into transferrable SubmissionSpec
+	bodyBytes, err := json.Marshal(submission)
+	if err != nil {
+		http.Error(w, "Failed to encode submission", http.StatusInternalServerError)
+		return
+	}
+
+	//package message data frame for RabbitMQ delivery
+	msg := amqp.Publishing{
+		ContentType: "application/json",
+		MessageId:   fmt.Sprintf("sub_%d", time.Now().UnixNano()),
+		Body:        bodyBytes,
+	}
+
+	if err := env.rmqm.Publish(
+		r.Context(),
+		os.Getenv("RABBITMQ_QUEUE_NAME"),
+		msg,
+	); err != nil {
+		http.Error(w, fmt.Sprintf("Message broker drop: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -66,8 +96,15 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// uniquely generated consumer tag to avoid multi-client registration conflicts
+	uniqueConsumerTag := fmt.Sprintf("sse_%d", time.Now().UnixNano())
 	execEventQueue := make(chan amqp.Delivery)
-	if err := env.rmqm.Subscribe(*env.ctx, execEventQueue, "sse-consumer"); err != nil {
+	if err := env.rmqm.Subscribe(
+		*env.ctx,
+		execEventQueue,
+		uniqueConsumerTag,
+		os.Getenv("RABBITMQ_QUEUE_NAME"),
+	); err != nil {
 		http.Error(w, "Execution event queue failed!", http.StatusInternalServerError)
 		return
 	}
@@ -75,39 +112,57 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
-			fmt.Println("Client disconnected.")
+			log.Println("SSE client disconnected safely.")
 			return
-
-		case e := <-execEventQueue:
-			// Format required by SSE: "data: <message>\n\n"
-			// double newline indicating the end of an event block
-			fmt.Fprintf(w, "Event: %v\n\n", e)
-
-			// flush immediately
+		case msg, ok := <-execEventQueue:
+			if !ok {
+				log.Println("Event queue subscription closed stream.")
+				return
+			}
+			fmt.Fprintf(w, "data: %s\n\n", string(msg.Body))
 			flusher.Flush()
+
+			_ = msg.Ack(false) // ACK message delivery processing
 		}
 	}
 }
 
 func (env *ServerEnv) ResultReciever(w http.ResponseWriter, r *http.Request) {
 
-	bucket := "ajbucket" // replace with env derived
-	job_id := "example"  // replace with url derived
-	key := "/submission/" + job_id + "/result.json"
-	resultFile := "result.json"
+	jobID := r.PathValue("job_id")
+	if jobID == "" {
+		http.Error(w, "Missing job reference id parameter", http.StatusBadRequest)
+		return
+	}
+
+	bucket := env.bucket
+	key := "/submission/" + jobID + "/result.json"
+	resultFile := fmt.Sprintf("/tmp/result_%s.json", jobID)
+
+	/*
+		TODO:
+		Instead of writing to a local file then sending back.
+		Directly stream back from S3 to client
+	*/
 
 	if err := env.s3m.DownloadFileFromS3(*env.ctx, bucket, key, resultFile); err != nil {
 		http.Error(w, "Failed fetching result\n", http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"status":"fetched","job_id":"%s"}`, jobID)
 }
 
-func InitHttpServer(ctx context.Context, s3m *shared.S3Manager, rmqm *shared.RMQManager) {
+func InitHTTPServer(
+	ctx context.Context, s3m *shared.S3Manager, rmqm *shared.RMQManager,
+) *http.Server {
 
 	env := &ServerEnv{
-		ctx:  &ctx,
-		s3m:  s3m,
-		rmqm: rmqm,
+		ctx:    &ctx,
+		s3m:    s3m,
+		rmqm:   rmqm,
+		bucket: os.Getenv("S3_BUCKET_NAME"),
 	}
 
 	mux := http.NewServeMux()
@@ -120,7 +175,8 @@ func InitHttpServer(ctx context.Context, s3m *shared.S3Manager, rmqm *shared.RMQ
 	serverPort := ":8080"
 	fmt.Printf("Starting server on http://localhost%s\n", serverPort)
 
-	if err := http.ListenAndServe(serverPort, mux); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	return &http.Server{
+		Addr:    serverPort,
+		Handler: mux,
 	}
 }

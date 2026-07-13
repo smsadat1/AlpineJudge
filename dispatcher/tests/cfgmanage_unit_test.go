@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_CfgManager(t *testing.T) {
+func Test_LoadConfigs(t *testing.T) {
 
 	// reset global map state to prevent cross-test contamination
 	dispatcher.AvailableLanguages = make(map[string]map[string]struct{})
