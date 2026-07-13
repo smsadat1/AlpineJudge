@@ -16,6 +16,12 @@ type RMQManager struct {
 	q    amqp.Queue
 }
 
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Panicf("%s %s\n", err, msg)
+	}
+}
+
 func NewRMQManager(ctx context.Context, amqpURL string) (*RMQManager, error) {
 
 	log.Printf("Connecting to RabbitMQ server at %s\n", amqpURL)

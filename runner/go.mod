@@ -5,7 +5,19 @@ go 1.26.3
 require (
 	github.com/containerd/containerd v1.7.33
 	github.com/rabbitmq/amqp091-go v1.12.0
-	github.com/joho/godotenv v1.5.1
+	gopkg.in/yaml.v3 v3.0.1
+)
+
+require (
+	cyphar.com/go-pathrs v0.2.1 // indirect
+	github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 // indirect
+	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
+	github.com/cyphar/filepath-securejoin v0.6.0 // indirect
+	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/opencontainers/selinux v1.13.1 // indirect
+	google.golang.org/genproto v0.0.0-20231211222908-989df2bf70f3 // indirect
 )
 
 require (

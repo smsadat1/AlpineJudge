@@ -28,7 +28,7 @@ func ValidateSubmission(ctx context.Context, s3m shared.S3Manager, submission Su
 	}
 
 	// check language & version availability
-	ok = shared.IsLanguageSupported(language, version)
+	ok = IsLanguageSupported(language, version)
 	if !ok {
 		return fmt.Errorf("Unsupported language or version [Lang: %v Ver: %v]", language, version)
 	}
@@ -46,28 +46,33 @@ func ValidateSubmission(ctx context.Context, s3m shared.S3Manager, submission Su
 	return nil
 }
 
-func PrepareSubmission(ctx context.Context, s3m shared.S3Manager, submission SubmissionSpec) (JobSpec, error) {
+func PrepareSubmission(
+	ctx context.Context, s3m shared.S3Manager, submission SubmissionSpec,
+) (shared.JobSpec, error) {
 
 	// generate job_id
 	jobID, err := nanoid.New()
 	if err != nil {
-		return JobSpec{}, err
+		return shared.JobSpec{}, err
 	}
 
 	source := submission.Source
 	body := strings.NewReader(source)
-	s3key := submission.SubmissionID + "/" + string(jobID)
+	srcS3key := submission.SubmissionID + "/" + string(jobID)
+	testS3key := submission.Testset + "/" + submission.TestsetVersion + "/"
 
-	if err := s3m.UploadFileToS3(ctx, s3key, body); err != nil {
-		return JobSpec{}, err
+	if err := s3m.UploadFileToS3(ctx, srcS3key, body); err != nil {
+		return shared.JobSpec{}, err
 	}
 
-	jobspec := JobSpec{
+	jobspec := shared.JobSpec{
 		JobId:          string(jobID),
-		SubmissionID:   submission.SubmissionID,
 		Language:       submission.Language,
 		Version:        submission.Version,
-		S3Key:          s3key,
+		SubmissionID:   submission.SubmissionID,
+		Bucket:         submission.Bucket,
+		SrcCodeS3Key:   srcS3key,
+		TestsetS3Key:   testS3key,
 		Testset:        submission.Testset,
 		TestsetVersion: submission.TestsetVersion,
 	}

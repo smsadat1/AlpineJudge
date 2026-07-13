@@ -18,7 +18,7 @@ func main() {
 	}
 
 	log.Println("Loading dispatcher configuration")
-	if err := shared.LoadConfigs("/etc/alpinejudge/dispatcher/config.yaml"); err != nil {
+	if err := LoadConfigs("/etc/alpinejudge/dispatcher/config.yaml"); err != nil {
 		log.Fatalf("%v", err)
 	}
 
@@ -29,7 +29,8 @@ func main() {
 	secretKey := os.Getenv("S3_PASSWORD_DEV")
 	s3Endpoint := os.Getenv("S3_ENDPOINT_DEV")
 
-	s3Mgr, err := shared.InitS3Manager(ctx, bucket, region, accessKey, secretKey, s3Endpoint)
+	// s3Mgr, err := shared.InitS3Manager(ctx, bucket, region, accessKey, secretKey, s3Endpoint)
+	_, err := shared.InitS3Manager(ctx, bucket, region, accessKey, secretKey, s3Endpoint)
 	if err != nil {
 		log.Fatalf("Failed to spin up S3: %v", err)
 	}
@@ -47,5 +48,5 @@ func main() {
 	defer rmqMgr.Close()
 
 	// start http server
-	InitHttpServer(ctx, s3Mgr, rmqMgr)
+	// InitHttpServer(ctx, s3Mgr, rmqMgr)
 }

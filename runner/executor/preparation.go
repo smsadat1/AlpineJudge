@@ -161,12 +161,12 @@ func prepareExecrules(
 		TestsetPathHost:      hostTestFileDir,
 		TestsetPathContainer: containerTestFileDir,
 
-		CpuQuota:       float64(utils.CPUQuota),
-		MemoryLimitMB:  utils.MemoryLimitMB,
-		NoNewPrivilege: utils.NoNewPrivs,
-		PidLimit:       int64(utils.PIDLimit),
-		Timeoutsec:     uint32(utils.TimeoutSec),
-		ReadOnlyRootfs: utils.RORootFS,
+		CpuQuota:       float64(utils.RunCfg.Limits.CPUQuota),
+		MemoryLimitMB:  utils.RunCfg.Limits.MemoryLimitMB,
+		NoNewPrivilege: utils.RunCfg.Limits.NoNewPrivs,
+		PidLimit:       int64(utils.RunCfg.Limits.PIDLimit),
+		Timeoutsec:     uint32(utils.RunCfg.Limits.TimeoutSec),
+		ReadOnlyRootfs: utils.RunCfg.Limits.RORootFS,
 	}
 
 	return nil, execRules

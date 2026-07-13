@@ -17,7 +17,7 @@ import (
 )
 
 func execSubm(
-	ctx context.Context, container containerd.Container, rules utils.ExecRules, jobspec utils.JobSpec, rmqm shared.RMQManager,
+	ctx context.Context, container containerd.Container, rules utils.ExecRules, jobspec shared.JobSpec, rmqm shared.RMQManager,
 ) utils.ResultSpec {
 
 	var status containerd.ExitStatus

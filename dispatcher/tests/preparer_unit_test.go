@@ -26,7 +26,7 @@ func Test_SubmissionPreperation(t *testing.T) {
 	}
 
 	submSpec := dispatcher.SubmissionSpec{
-		SubmissionID:   "s001",
+		SubmissionID:   "s003",
 		Language:       "cpp",
 		Version:        "c++17",
 		Source:         `#include<stdion.h>\nint main() \n{ std::cout << "Hello World\n";\n}`,
@@ -47,7 +47,8 @@ func Test_SubmissionPreperation(t *testing.T) {
 		jobSpec.SubmissionID != submSpec.SubmissionID ||
 		jobSpec.Language != submSpec.Language ||
 		jobSpec.Version != submSpec.Language ||
-		jobSpec.S3Key != submSpec.SubmissionID+"/"+string(jobSpec.JobId) ||
+		jobSpec.SrcCodeS3Key != submSpec.SubmissionID+"/"+string(jobSpec.JobId) ||
+		jobSpec.TestsetS3Key != submSpec.Testset+"/"+submSpec.TestsetVersion ||
 		jobSpec.Testset != submSpec.Testset ||
 		jobSpec.TestsetVersion != submSpec.TestsetVersion {
 		t.Error("Jobspec mismatched or malformed")

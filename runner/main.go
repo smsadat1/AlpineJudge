@@ -28,7 +28,7 @@ func main() {
 	defer cancel()
 
 	log.Println("Loading configurations...")
-	if err := shared.LoadConfigs("config.example.yaml"); err != nil {
+	if err := utils.LoadRunnerConfigs("config.example.yaml"); err != nil {
 		log.Fatalf("Fatal: Configuration failed to load: %v", err)
 	}
 

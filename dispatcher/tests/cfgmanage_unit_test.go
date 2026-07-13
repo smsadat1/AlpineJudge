@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"shared"
+	"dispatcher"
 	"slices"
 	"testing"
 )
@@ -9,18 +9,18 @@ import (
 func Test_CfgManager(t *testing.T) {
 
 	// reset global map state to prevent cross-test contamination
-	shared.AvailableLanguages = make(map[string]map[string]struct{})
+	dispatcher.AvailableLanguages = make(map[string]map[string]struct{})
 
-	if err := shared.LoadConfigs("artifacts/config.example.yaml"); err != nil {
+	if err := dispatcher.LoadConfigs("artifacts/config.example.yaml"); err != nil {
 		t.Logf("%v", err)
 	}
 
-	cVersions := shared.AvailableLanguages["c"]
-	cppVersions := shared.AvailableLanguages["cpp"]
-	goVersions := shared.AvailableLanguages["go"]
-	javaVersions := shared.AvailableLanguages["java"]
-	nodeVersions := shared.AvailableLanguages["node"]
-	pythonVersions := shared.AvailableLanguages["python"]
+	cVersions := dispatcher.AvailableLanguages["c"]
+	cppVersions := dispatcher.AvailableLanguages["cpp"]
+	goVersions := dispatcher.AvailableLanguages["go"]
+	javaVersions := dispatcher.AvailableLanguages["java"]
+	nodeVersions := dispatcher.AvailableLanguages["node"]
+	pythonVersions := dispatcher.AvailableLanguages["python"]
 
 	_, hasC99 := cVersions["c99"]
 	_, hasC11 := cVersions["c11"]
@@ -66,7 +66,7 @@ func Test_CfgManager(t *testing.T) {
 		t.Error("python versions mismatched")
 	}
 
-	availRunners := shared.AvailableRunners
+	availRunners := dispatcher.AvailableRunners
 	expectedRunners := []string{"runner-001", "runner-002"}
 
 	slices.Sort(availRunners)
