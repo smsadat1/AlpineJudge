@@ -13,7 +13,6 @@ import (
 )
 
 func TestRMQPipeline_Integration(t *testing.T) {
-
 	t.Setenv("RABBITMQ_URL_TEST", "amqp://guest:guest@localhost:5672/")
 	t.Setenv("RABBITMQ_QUEUE_NAME", "test-queue-1")
 
@@ -26,29 +25,27 @@ func TestRMQPipeline_Integration(t *testing.T) {
 	}
 	defer rmqm.Close()
 
-	localQueue := make(chan amqp.Publishing, 5)
+	// allocate a buffered channel for our consumer background routine to pipe into
 	jobSpecsQueue := make(chan amqp.Delivery, 5)
 
+	queueName := os.Getenv("RABBITMQ_QUEUE_NAME")
+
+	// 1. Turn on the consumer stream in the background
 	go func() {
-		if err := rmqm.Publish(ctx, localQueue); err != nil {
-			t.Logf("Producer exited: %v\n", err)
+		if err := rmqm.Subscribe(ctx, jobSpecsQueue, queueName, "test-rmq-consumer"); err != nil {
+			t.Logf("Consumer registration failed or exited: %v\n", err)
 		}
 	}()
 
-	go func() {
-		if err := rmqm.Subscribe(ctx, jobSpecsQueue, "test-rmq-consumer"); err != nil {
-			t.Logf("Consumer exited: %v\n", err)
-		}
-	}()
-
-	// amqp.Dial backoff logic a microsecond to connect
+	// short sleep to ensure consumer registration completes on the RabbitMQ broker node
 	time.Sleep(250 * time.Millisecond)
 
+	// 2. Create test spec payload
 	submSpec := dispatcher.SubmissionSpec{
 		SubmissionID:   "s001",
 		Language:       "cpp",
 		Version:        "c++17",
-		Source:         `#include<stdion.h>\nint main() \n{ std::cout << "Hello World\n";\n}`,
+		Source:         `#include<iostream>\nint main() \n{ std::cout << "Hello World\n";\n}`,
 		Testset:        "ts001",
 		TestsetVersion: "v1",
 	}
@@ -58,31 +55,41 @@ func TestRMQPipeline_Integration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	localQueue <- amqp.Publishing{
+	msg := amqp.Publishing{
 		ContentType: "application/json",
+		MessageId:   submSpec.SubmissionID,
 		Body:        jsonedSpec,
 	}
 
-	select {
-	case jobSpec := <-jobSpecsQueue:
-		// auto acknowledge the message back to RabbitMQ to keep the queue clean
-		_ = jobSpec.Ack(false)
-		var receivedSpec dispatcher.SubmissionSpec
-
-		if err := json.Unmarshal(jobSpec.Body, &receivedSpec); err != nil {
-			t.Fatalf("Failed to decode received message: %v\n", err)
-		}
-
-		if receivedSpec.SubmissionID != "s001" || receivedSpec.Language != "cpp" {
-			t.Errorf("Jobspec field mismatched! Got: %+v\n", receivedSpec)
-		} else {
-			t.Logf("Success! Jobspec field round-trip validation matched perfectly\n")
-		}
-
-	case <-time.After(2 * time.Second):
-		t.Fatal("Pipeline timed out waiting for the consumer to receive the producer's message")
+	// 3. Transmit the payload into RMQ
+	if err := rmqm.Publish(ctx, queueName, msg); err != nil {
+		t.Fatalf("Failed to execute producer execution line: %v", err)
 	}
+	t.Log("Message successfully handed off to the RabbitMQ broker exchange.")
 
-	close(localQueue)
-	close(jobSpecsQueue)
+	// 4. Capture the message as it flows down out of the background subscription pipeline
+	select {
+	case jobSpec, ok := <-jobSpecsQueue:
+		if !ok {
+			t.Fatal("Failed to read from pipeline: consumer channel closed early")
+		}
+
+		// Send manual ACK acknowledgement back to the broker to keep the test environment clean
+		_ = jobSpec.Ack(false)
+
+		var receivedSpec dispatcher.SubmissionSpec
+		if err := json.Unmarshal(jobSpec.Body, &receivedSpec); err != nil {
+			t.Fatalf("Failed to decode received message wire bytes: %v\n", err)
+		}
+
+		// 5. Perform payload round-trip validation assertions
+		if receivedSpec.SubmissionID != "s001" || receivedSpec.Language != "cpp" {
+			t.Errorf("Critical data distortion detected! Payload changed: %+v\n", receivedSpec)
+		} else {
+			t.Logf("Success! Jobspec field round-trip validation matched perfectly without mutation\n")
+		}
+
+	case <-time.After(3 * time.Second):
+		t.Fatal("Timeout: Pipeline hung waiting for the consumer to grab the published message")
+	}
 }

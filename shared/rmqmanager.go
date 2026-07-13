@@ -4,16 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type RMQManager struct {
-	conn *amqp.Connection
-	q    amqp.Queue
+	conn  *amqp.Connection
+	pubCh *amqp.Channel
 }
 
 func failOnError(err error, msg string) {
@@ -46,39 +44,21 @@ func NewRMQManager(ctx context.Context, amqpURL string) (*RMQManager, error) {
 
 	log.Println("Connected to RabbitMQ server")
 
-	// a temporary channel just to configure topology and declare the queue
-	initCh, err := conn.Channel()
-	failOnError(err, "Failed to open channel")
-	defer initCh.Close()
-	log.Println("Opened channel")
-
-	maxQueueCap, _ := strconv.Atoi(os.Getenv("MAX_QUEUE_CAP"))
-	err = initCh.Qos(
-		maxQueueCap,
-		0,     // prefetch size
-		false, // global
-	)
-	failOnError(err, "Failed to set QoS backpressure")
-
-	queueName := os.Getenv("RABBITMQ_QUEUE_NAME")
-	q, err := initCh.QueueDeclare(
-		queueName,
-		true,  // survive server restart
-		false, // no auto delete
-		false, // exclusive queue per runner service
-		false, // wait
-		nil,
-	)
-	failOnError(err, "Failed to declared queue")
+	// Initialize the global Publisher channel
+	pubCh, err := conn.Channel()
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("failed to open global pub channel: %w", err)
+	}
 
 	return &RMQManager{
-		conn: conn,
-		q:    q,
+		conn:  conn,
+		pubCh: pubCh,
 	}, nil
 }
 
 func (m *RMQManager) Subscribe(
-	ctx context.Context, localQueue chan<- amqp.Delivery, consumerName string,
+	ctx context.Context, localQueue chan<- amqp.Delivery, queueName string, consumerTag string,
 ) error {
 
 	// open a dedicated channel
@@ -86,7 +66,13 @@ func (m *RMQManager) Subscribe(
 	if err != nil {
 		return fmt.Errorf("failed to open dedicated consumer channel: %w", err)
 	}
-	defer consumerCh.Close() // auto clean up channel
+
+	// Declare the target queue (ensures it exists before consuming)
+	q, err := consumerCh.QueueDeclare(queueName, true, false, false, false, nil)
+	if err != nil {
+		consumerCh.Close()
+		return fmt.Errorf("failed to declare queue %s: %w", queueName, err)
+	}
 
 	// apply QoS prefetch backpressure limit directly to this channel
 	if err := consumerCh.Qos(cap(localQueue), 0, false); err != nil {
@@ -94,8 +80,8 @@ func (m *RMQManager) Subscribe(
 	}
 
 	msgs, err := consumerCh.Consume(
-		m.q.Name,
-		consumerName,
+		q.Name,
+		consumerTag,
 		false, // runner will send ACK later
 		false, // exclusive
 		true,  // no local
@@ -105,57 +91,50 @@ func (m *RMQManager) Subscribe(
 	failOnError(err, "Failed to register consumer")
 	log.Println("Consumer registered. Piping data to Go channel")
 
-	// pull from RMQ chan and pass to localQueue
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("Stopping consumer loop...\n")
-		case msg, ok := <-msgs:
-			if !ok {
-				return fmt.Errorf("RabbitMQ channel closed unexpectedly\n")
+	// Pipe the data frames in a background worker
+	go func() {
+		// clean up the transient channel the moment the context dies
+		// (example: when the HTTP SSE client closes their browser tab)
+		defer consumerCh.Close()
+		for {
+			select {
+			case <-ctx.Done():
+				log.Printf("Closing subscription stream for tag: %s", consumerTag)
+				return
+			case d, ok := <-msgs:
+				if !ok {
+					return
+				}
+				localQueue <- d
 			}
-
-			//  naturally BLOCK here if localQueue reaches MAX_QUEUE_CAP.
-			localQueue <- msg
 		}
-	}
+	}()
+
+	return nil
 }
 
-func (m *RMQManager) Publish(
-	ctx context.Context, localQueue <-chan amqp.Publishing,
-) error {
+func (m *RMQManager) Publish(ctx context.Context, queueName string, msg amqp.Publishing) error {
 
-	// a completely isolated channel dedicated to publishing tasks
-	prodCh, err := m.conn.Channel()
+	// Ensure target queue exists before pushing
+	_, err := m.pubCh.QueueDeclare(queueName, true, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to open dedicated producer channel: %w\n", err)
+		return fmt.Errorf("failed to declare target publish queue: %w", err)
 	}
-	defer prodCh.Close()
 
-	log.Println("Producer initialized. Ready to transmit payloads...")
+	err = m.pubCh.PublishWithContext(ctx, "", queueName, false, false, msg)
 
-	// continuous loop to drain the channel safely without data loss
-	for msg := range localQueue {
-		// short 5-second timeout context strictly for this specific publish
-
-		pubCtx, pubCancel := context.WithTimeout(ctx, 5*time.Second)
-		err := prodCh.PublishWithContext(pubCtx, "", m.q.Name, false, false, msg)
-		pubCancel() // clean up context instantly inside the loop
-
-		if err != nil {
-			log.Printf("Failed to publish message: %v\n", err)
-			continue // continue for later messages
-		}
-
-		log.Printf("Sent message successfully! Type: %s, Body length: %d\n", msg.ContentType, len(msg.Body))
+	if err != nil {
+		return fmt.Errorf("Failed to publish message: %v\n", err)
 	}
 	return nil
 }
 
 // close gracefully terminates the root network connection handle
 func (m *RMQManager) Close() {
+	if m.pubCh != nil {
+		_ = m.pubCh.Close()
+	}
 	if m.conn != nil {
-		m.conn.Close()
-		log.Println("RabbitMQ server connection closed safely")
+		_ = m.conn.Close()
 	}
 }
