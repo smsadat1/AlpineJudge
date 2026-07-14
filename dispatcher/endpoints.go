@@ -23,14 +23,27 @@ type ServerEnv struct {
 	bucket string
 }
 
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func writeError(w http.ResponseWriter, status int, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	json.NewEncoder(w).Encode(ErrorResponse{
+		Error: err.Error(),
+	})
+}
+
 func (env *ServerEnv) ResponseRootHanlder(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "AlpineJudge active")
+	json.NewEncoder(w).Encode(map[string]string{"message": "AlpineJudge Alive"})
 }
 
 func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, fmt.Errorf("Method not allowed"))
 		return
 	}
 
@@ -39,7 +52,7 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 	// malformed submission
 	err := json.NewDecoder(r.Body).Decode(&submission)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -48,14 +61,14 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 		downstream validations stop immediately.
 	*/
 	if err = ValidateSubmission(r.Context(), *env.s3m, submission); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	// marshall requests into transferrable SubmissionSpec
 	bodyBytes, err := json.Marshal(submission)
 	if err != nil {
-		http.Error(w, "Failed to encode submission", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -71,14 +84,14 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 		os.Getenv("RABBITMQ_QUEUE_NAME"),
 		msg,
 	); err != nil {
-		http.Error(w, fmt.Sprintf("Message broker drop: %v", err), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("Message broker drop: %v", err))
 		return
 	}
 
 	// successful submission
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"status": "Queued"})
 }
 
 func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +142,7 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 
 func (env *ServerEnv) ResultReciever(w http.ResponseWriter, r *http.Request) {
 
-	jobID := r.PathValue("job_id")
+	jobID := r.PathValue("submission_id")
 	if jobID == "" {
 		http.Error(w, "Missing job reference id parameter", http.StatusBadRequest)
 		return
@@ -169,8 +182,8 @@ func InitHTTPServer(
 
 	mux.HandleFunc("GET /", env.ResponseRootHanlder)
 	mux.HandleFunc("POST /submit", env.SubmissionReciever)
-	mux.HandleFunc("GET /job/{job_id}/events", env.SSEHandler)
-	mux.HandleFunc("GET /jobs/{job_id}/result", env.ResultReciever)
+	mux.HandleFunc("GET /submissions/{submission_id}/events", env.SSEHandler)
+	mux.HandleFunc("GET /submissions/{submission_id}/result", env.ResultReciever)
 
 	serverPort := ":8080"
 	fmt.Printf("Starting server on http://localhost%s\n", serverPort)
