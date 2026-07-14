@@ -1,4 +1,4 @@
-package executor
+package images
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"os/exec"
 )
 
-// in-container agent to run tests
+// in-container agent to run execution
 
 func RunnerAgent() {
 

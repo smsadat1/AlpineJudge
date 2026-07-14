@@ -6,7 +6,7 @@ import (
 	"io"
 	"shared"
 
-	"github.com/rabbitmq/amqp091-go"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type ExecRules struct {
@@ -48,11 +48,11 @@ type AgentExecSpec struct {
 
 // stream real time logs from container
 func StreamContainerLogsToRMQ(
-	ctx context.Context, queuename string, reader io.Reader, rmqm shared.RMQManager, localQueue <-chan amqp091.Publishing,
+	ctx context.Context, queuename string, reader io.Reader, rmqm shared.RMQManager, msg amqp.Publishing,
 ) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Err()
 	for scanner.Scan() {
-		rmqm.Publish(ctx, localQueue)
+		rmqm.Publish(ctx, queuename, msg)
 	}
 }
