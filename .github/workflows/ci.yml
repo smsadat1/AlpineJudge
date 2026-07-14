@@ -26,8 +26,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # List every directory that contains a go.mod file | dispatcher, runner & tests module will be added later
-        module: [ 'shared']
+        module: ['shared', 'dispatcher'] # TODO: Add runner later
+        subsystem: ['tests']
 
     steps:
       - name: Checkout Code
@@ -59,3 +59,7 @@ jobs:
         run: |
           go mod tidy
           go test -v ./...
+
+      - name: Run E2E Tests
+        working-directory: ${{ matrix.subsystem }}
+        run: bash verify.sh
