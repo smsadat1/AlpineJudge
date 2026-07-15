@@ -51,8 +51,16 @@ func execSubm(
 	defer stderrReader.Close()
 
 	// get real time log stream
-	go utils.StreamContainerLogsToRMQ(ctx, rules.OutStreamQueueName, stdoutReader, rmqm, localQueue)
-	go utils.StreamContainerLogsToRMQ(ctx, rules.ErrStreamQueueName, stderrReader, rmqm, localQueue)
+	select {
+	case msg, ok := <-localQueue:
+		if !ok {
+
+		}
+		utils.StreamContainerLogsToRMQ(ctx, rules.OutStreamQueueName, stdoutReader, rmqm, msg)
+		utils.StreamContainerLogsToRMQ(ctx, rules.ErrStreamQueueName, stderrReader, rmqm, msg)
+	case ctx.Done():
+
+	}
 
 	// get exit status channel
 	statusC, err := task.Wait(ctx)

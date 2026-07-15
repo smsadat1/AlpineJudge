@@ -2,7 +2,11 @@
 package executor
 
 import (
+	"encoding/json"
+	"fmt"
 	"local/runner/utils"
+	"log"
+	"os"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/oci"
@@ -28,20 +32,35 @@ func build_ociSpecOpts(
 		// mount file
 		oci.WithMounts([]specs.Mount{
 			{
+				// source code (single file mount)
 				Source:      rules.CodePathContainer,
 				Destination: rules.CodePathHost,
 				Type:        "bind",
-				// single file mounth
-				Options: []string{"bind", "ro"},
+				Options:     []string{"bind", "ro"},
 			},
 			{
+				// agent execution specs (single file mount)
+				Source:      "/tmp/execspec.json",
+				Destination: "/workspace/execspec.json",
+				Type:        "bind",
+				Options:     []string{"bind", "ro"},
+			},
+			{
+				// testset (direotory mount)
 				Source:      rules.TestsetPathHost,
 				Destination: rules.TestsetPathContainer,
 				Type:        "bind",
-				// directory mount
-				Options: []string{"rbind", "ro"},
+				Options:     []string{"rbind", "ro"},
 			},
 		}),
+
+		oci.WithEnv([]string{
+			"CONFIG_PATH=/workspace/execspec.json",
+		}),
+	}
+
+	if rules.NoNewPrivilege {
+		opts = append(opts, oci.WithNoNewPrivileges)
 	}
 
 	if rules.ReadOnlyRootfs {
@@ -49,7 +68,29 @@ func build_ociSpecOpts(
 	}
 
 	// evaluated last to guarantee execution parameters survive
-	opts = append(opts, oci.WithProcessArgs(rules.Args...))
+	opts = append(opts, oci.WithProcessArgs("/usr/bin/ajagent"))
 
 	return opts
+}
+
+func build_agentExecSpec(rules utils.ExecRules) error {
+
+	agentSpec := utils.AgentExecSpec{
+		LogLimitKB:  rules.LogLimitKB,
+		TimeoutSec:  rules.Timeoutsec,
+		TestSetPath: rules.TestID,
+		CompileArgs: rules.CompileArgs,
+		RunArgs:     rules.RunArgs,
+	}
+
+	data, err := json.Marshal(agentSpec)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile("/tmp/execspec.json", data, os.ModeAppend); err != nil {
+		return fmt.Errorf("Failed to create agent execspec json:  %v\n", err)
+	}
+	log.Println("Created agent exespec json")
+	return nil
 }

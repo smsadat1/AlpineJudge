@@ -1,8 +1,6 @@
 {
     "submission_id": "subm-002",
 
-    "memory_limit_mb": 1024,
-    "pid_limit": 128,
     "log_limit_kb": 4096,
     "timeout_sec": 5,
 

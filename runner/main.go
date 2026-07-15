@@ -10,6 +10,7 @@ package runner
 import (
 	"context"
 	"local/runner/executor"
+	"local/runner/images"
 	"local/runner/scheduler"
 	"local/runner/utils"
 	"log"
@@ -61,7 +62,7 @@ func main() {
 	log.Println("Creating container namespace...")
 	cCtx := namespaces.WithNamespace(ctx, "alpine_judge")
 
-	// TODO: add image caching
+	images.EnsureContainerImages()
 
 	sysMetrics := make(chan utils.SystemMetrics, 15)
 	localQueue := make(chan amqp.Delivery, 100)
@@ -74,7 +75,7 @@ func main() {
 		}
 	}()
 	go func() {
-		if err := rmqm.Subscribe(ctx, localQueue, "job-queue-consumer"); err != nil {
+		if err := rmqm.Subscribe(ctx, localQueue, "job-queue-consumer", "runner001-consumer"); err != nil {
 			log.Printf("Broker Alert: Consumer subscription severed: %v\n", err)
 		}
 	}()
@@ -132,7 +133,7 @@ func main() {
 					return
 				}
 
-				_ = result              // process results specs here
+				// TODO: Implement pipeline: result -> json format -> S3
 				_ = delivery.Ack(false) // notify RMQ that task is cleared
 				log.Printf("Task successfully executed. Slot released.")
 			}(msg)

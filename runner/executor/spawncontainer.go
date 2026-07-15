@@ -25,6 +25,9 @@ func ExecSubmission(
 	// 2. Pull the container image & build OCI specs
 	image := getContainerImage(rules.Image, client, ctx)
 	opts := build_ociSpecOpts(image, rules)
+	if err := build_agentExecSpec(rules); err != nil {
+		return utils.ResultSpec{}, err
+	}
 
 	// 3. Initiate the container
 	snapshotID := rules.ContainerID + "-snapshot"
@@ -33,7 +36,7 @@ func ExecSubmission(
 		rules.ContainerID,
 		containerd.WithNewSnapshot(snapshotID, image),
 		containerd.WithNewSpec(opts...),
-		containerd.WithRuntime("runsc", nil), // gVisor interception
+		containerd.WithRuntime("runc", nil),
 	)
 
 	if err != nil {
@@ -43,5 +46,6 @@ func ExecSubmission(
 
 	// 4. Manage the running continer, run tests & destroy before exit
 	result := execSubm(ctx, container, rules, jobspec, rmqm)
+
 	return result, nil
 }

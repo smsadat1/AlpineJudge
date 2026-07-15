@@ -33,46 +33,48 @@ func prepareExecrules(
 	ctx context.Context, s3m shared.S3Manager, jobspec shared.JobSpec,
 ) (error, utils.ExecRules) {
 
-	jobID := jobspec.JobId
 	submID := jobspec.SubmissionID
 	language := jobspec.Language
 	version := jobspec.Version
 	testID := jobspec.Testset + jobspec.TestsetVersion
 
-	var cmdArgs []string
+	var compileArgs []string
+	var runArgs []string
 	var containerImage string
 
 	if language == "c" || language == "cpp" {
 		containerImage = "alpinejudge/gcc"
 
 		if language == "c" {
-			cmdArgs = append(cmdArgs, "/usr/bin/gcc")
+			compileArgs = append(compileArgs, "/usr/bin/gcc")
 		}
 
 		if language == "cpp" {
-			cmdArgs = append(cmdArgs, "/usr/bin/g++")
+			compileArgs = append(compileArgs, "/usr/bin/g++")
 		}
 
 		switch version {
 		case "c99":
-			cmdArgs = append(cmdArgs, "-std=c99")
+			compileArgs = append(compileArgs, "-std=c99")
 		case "c11":
-			cmdArgs = append(cmdArgs, "-std=c17")
+			compileArgs = append(compileArgs, "-std=c17")
 		case "c17":
-			cmdArgs = append(cmdArgs, "-std=c17")
+			compileArgs = append(compileArgs, "-std=c17")
 		case "c++11":
-			cmdArgs = append(cmdArgs, "-std=c++11")
+			compileArgs = append(compileArgs, "-std=c++11")
 		case "c++17":
-			cmdArgs = append(cmdArgs, "-std=c++17")
+			compileArgs = append(compileArgs, "-std=c++17")
 		case "c++20":
-			cmdArgs = append(cmdArgs, "-std=c++20")
+			compileArgs = append(compileArgs, "-std=c++20")
 		}
 
-		cmdArgs = append(cmdArgs, "-Wall")
-		cmdArgs = append(cmdArgs, "-Wextra")
-		cmdArgs = append(cmdArgs, "-o")
-		cmdArgs = append(cmdArgs, "main")
-		cmdArgs = append(cmdArgs, "main."+jobspec.Language)
+		compileArgs = append(compileArgs, "-Wall")
+		compileArgs = append(compileArgs, "-Wextra")
+		compileArgs = append(compileArgs, "-o")
+		compileArgs = append(compileArgs, "main")
+		compileArgs = append(compileArgs, "main."+jobspec.Language)
+
+		runArgs = append(runArgs, "./main")
 	}
 
 	if language == "go" {
@@ -80,12 +82,12 @@ func prepareExecrules(
 
 		switch version {
 		case "go1.24":
-			cmdArgs = append(cmdArgs, "/usr/local/go1.24/bin/go")
+			runArgs = append(runArgs, "/usr/local/go1.24/bin/go")
 		case "go1.26":
-			cmdArgs = append(cmdArgs, "/usr/local/go1.26/bin/go")
+			runArgs = append(runArgs, "/usr/local/go1.26/bin/go")
 		}
-		cmdArgs = append(cmdArgs, "run")
-		cmdArgs = append(cmdArgs, "main.go")
+		runArgs = append(runArgs, "run")
+		runArgs = append(runArgs, "main.go")
 	}
 
 	if language == "java" {
@@ -93,19 +95,19 @@ func prepareExecrules(
 
 		switch version {
 		case "java25":
-			cmdArgs = append(cmdArgs, "/usr/lib/jvm/java-25-openjdk/bin/javac")
+			compileArgs = append(compileArgs, "/usr/lib/jvm/java-25-openjdk/bin/javac")
 		case "java26":
-			cmdArgs = append(cmdArgs, "/usr/lib/jvm/java-26-openjdk/bin/javac")
+			compileArgs = append(compileArgs, "/usr/lib/jvm/java-26-openjdk/bin/javac")
 		}
-		cmdArgs = append(cmdArgs, "Main.java")
+		compileArgs = append(compileArgs, "Main.java")
 
 		switch version {
 		case "java25":
-			cmdArgs = append(cmdArgs, "/usr/lib/jvm/java-25-openjdk/bin/java")
+			runArgs = append(runArgs, "/usr/lib/jvm/java-25-openjdk/bin/java")
 		case "java26":
-			cmdArgs = append(cmdArgs, "/usr/lib/jvm/java-26-openjdk/bin/java")
+			runArgs = append(runArgs, "/usr/lib/jvm/java-26-openjdk/bin/java")
 		}
-		cmdArgs = append(cmdArgs, "Main")
+		runArgs = append(runArgs, "Main")
 	}
 
 	if language == "node" {
@@ -113,11 +115,11 @@ func prepareExecrules(
 
 		switch version {
 		case "node18":
-			cmdArgs = append(cmdArgs, "/usr/bin/node18")
+			runArgs = append(runArgs, "/usr/bin/node18")
 		case "node22":
-			cmdArgs = append(cmdArgs, "/usr/bin/node22")
+			runArgs = append(runArgs, "/usr/bin/node22")
 		}
-		cmdArgs = append(cmdArgs, "main.js")
+		runArgs = append(runArgs, "main.js")
 	}
 
 	if language == "py" {
@@ -125,14 +127,14 @@ func prepareExecrules(
 
 		switch version {
 		case "python3.10":
-			cmdArgs = append(cmdArgs, "/usr/bin/python3.10")
+			runArgs = append(runArgs, "/usr/bin/python3.10")
 		case "python3.12":
-			cmdArgs = append(cmdArgs, "/usr/bin/python3.12")
+			runArgs = append(runArgs, "/usr/bin/python3.12")
 		}
-		cmdArgs = append(cmdArgs, "main.py")
+		runArgs = append(runArgs, "main.py")
 	}
 
-	hostWorkDir := "/tmp/ajrunner/" + jobID + "/"
+	hostWorkDir := "/tmp/ajrunner/" + "/"
 	hostSrcFilePath := hostWorkDir + submID + "." + language
 	hostTestFileDir := hostWorkDir + testID
 
@@ -152,9 +154,9 @@ func prepareExecrules(
 	HostTestFilePath = hostTestFileDir
 
 	execRules := utils.ExecRules{
-		ContainerID: jobID,
 		Image:       containerImage,
-		Args:        cmdArgs,
+		CompileArgs: compileArgs,
+		RunArgs:     runArgs,
 
 		CodePathHost:         hostSrcFilePath,
 		CodePathContainer:    containerSrcFilePath,

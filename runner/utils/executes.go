@@ -13,37 +13,39 @@ type ExecRules struct {
 	// system
 	ContainerID string
 	Image       string
-	Args        []string
+	CompileArgs []string // agent
+	RunArgs     []string // agent
+	TestID      string
 
 	// environment
-	CodePathHost         string
-	CodePathContainer    string
-	TestsetPathHost      string
-	TestsetPathContainer string
-	Env                  map[string]string
+	CodePathHost         string            // oci | ok
+	CodePathContainer    string            // oci | ok
+	TestsetPathHost      string            // oci | ok
+	TestsetPathContainer string            // oci | ok
+	Env                  map[string]string // only "CONFIG_PATH=/workspace/execspec.json" | ok
 	OutStreamQueueName   string
 	ErrStreamQueueName   string
 
 	// rules
-	MemoryLimitMB  uint64
-	PidLimit       int64
-	CpuQuota       float64
-	NoNewPrivilege bool
-	ReadOnlyRootfs bool
-	Timeoutsec     uint32
+	MemoryLimitMB  uint64  // oci | ok
+	PidLimit       int64   // oci | ok
+	CpuQuota       float64 // oci | ok
+	NoNewPrivilege bool    // oci | ok
+	ReadOnlyRootfs bool    // oci | ok
+	Timeoutsec     uint32  // agent + oci (t+extra)
+	LogLimitKB     uint32  // agent	| ok
 }
 
 // execution specification for in-container agent
 type AgentExecSpec struct {
-	// execution
-	HasCompilePhase bool
-	CompileArgs     []string
-	RunArgs         []string
-	TestsetPath     string
-
 	// resource
-	LogLimitKB uint64
-	Timeoutsec uint32
+	LogLimitKB uint32
+	TimeoutSec uint32
+
+	// specifications
+	TestSetPath string
+	CompileArgs []string
+	RunArgs     []string
 }
 
 // stream real time logs from container
