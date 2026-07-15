@@ -17,6 +17,6 @@ RUN wget https://go.dev/dl/go1.26.5.linux-amd64.tar.gz && \
 
 WORKDIR /workspace
 
-COPY --chmod=755 ajagent /usr/bin/ajagent
+COPY --chmod=755 ajagent/ajagent /usr/bin/ajagent
 
 ENTRYPOINT ["/usr/bin/ajagent"]
