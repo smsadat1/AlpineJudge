@@ -1,7 +1,6 @@
 package shared
 
 type JobSpec struct {
-	JobId          string `json:"job_id"`
 	Language       string `json:"language"`
 	Version        string `json:"version"`
 	SubmissionID   string `json:"submission_id"`
