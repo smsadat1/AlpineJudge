@@ -111,7 +111,7 @@ func RunnerAgent() {
 	defer cancel()
 
 	// compile stage
-	if execSpec.HasCompile {
+	if len(execSpec.CompileArgs) > 0 {
 		cmd := exec.CommandContext(
 			ctx, execSpec.CompileArgs[0],
 			execSpec.CompileArgs[1:]...,

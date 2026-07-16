@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestSystemMonitor(t *testing.T) {
+func Test_SystemMonitor(t *testing.T) {
 
 	scheduler.GetCPUSampleFn = func() (utils.CPUSample, error) { return utils.CPUSample{}, nil }
 	scheduler.CalcCPUUsageFn = func(p, c utils.CPUSample) float64 { return 25.5 }

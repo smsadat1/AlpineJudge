@@ -40,16 +40,13 @@ func prepareExecrules(
 
 	var compileArgs []string
 	var runArgs []string
-	var containerImage string
 
-	if language == "c" || language == "cpp" {
-		containerImage = "alpinejudge/gcc"
-
+	if language == "c" || language == "cpp" || language == "cc" {
 		if language == "c" {
 			compileArgs = append(compileArgs, "/usr/bin/gcc")
 		}
 
-		if language == "cpp" {
+		if language == "cpp" || language == "cc" {
 			compileArgs = append(compileArgs, "/usr/bin/g++")
 		}
 
@@ -78,8 +75,6 @@ func prepareExecrules(
 	}
 
 	if language == "go" {
-		containerImage = "alpinejudge/go"
-
 		switch version {
 		case "go1.24":
 			runArgs = append(runArgs, "/usr/local/go1.24/bin/go")
@@ -91,8 +86,6 @@ func prepareExecrules(
 	}
 
 	if language == "java" {
-		containerImage = "alpinejudge/java"
-
 		switch version {
 		case "java25":
 			compileArgs = append(compileArgs, "/usr/lib/jvm/java-25-openjdk/bin/javac")
@@ -111,8 +104,6 @@ func prepareExecrules(
 	}
 
 	if language == "node" {
-		containerImage = "alpinejudge/node"
-
 		switch version {
 		case "node18":
 			runArgs = append(runArgs, "/usr/bin/node18")
@@ -123,8 +114,6 @@ func prepareExecrules(
 	}
 
 	if language == "py" {
-		containerImage = "alpinejudge/python"
-
 		switch version {
 		case "python3.10":
 			runArgs = append(runArgs, "/usr/bin/python3.10")
@@ -134,6 +123,7 @@ func prepareExecrules(
 		runArgs = append(runArgs, "main.py")
 	}
 
+	containerImage := utils.RunCfg.Images[language]
 	hostWorkDir := "/tmp/ajrunner/" + "/"
 	hostSrcFilePath := hostWorkDir + submID + "." + language
 	hostTestFileDir := hostWorkDir + testID

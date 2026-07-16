@@ -5,13 +5,14 @@ import (
 	"io"
 	"log"
 	"shared"
+	"sync"
 	"syscall"
 	"time"
 
+	containerd "github.com/containerd/containerd"
+	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/errdefs"
-	containerd "github.com/containerd/containerd/v2/client"
-	"github.com/containerd/containerd/v2/pkg/cio"
-	"github.com/rabbitmq/amqp091-go"
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	"local/runner/utils"
 )
@@ -19,8 +20,6 @@ import (
 func execSubm(
 	ctx context.Context, container containerd.Container, rules utils.ExecRules, jobspec shared.JobSpec, rmqm shared.RMQManager,
 ) utils.ResultSpec {
-
-	var status containerd.ExitStatus
 
 	result := utils.ResultSpec{
 		SubmissionId: jobspec.SubmissionID,
@@ -33,53 +32,69 @@ func execSubm(
 	stdoutReader, stdoutWriter := io.Pipe()
 	stderrReader, stderrWriter := io.Pipe()
 
-	localQueue := make(chan amqp091.Publishing, 100)
+	localQueue := make(chan amqp.Publishing, 100)
 
 	task, err := container.NewTask(
 		ctx,
 		cio.NewCreator(cio.WithStreams(nil, stdoutWriter, stderrWriter)),
 	)
 	if err != nil {
+		stderrWriter.Close()
+		stdoutWriter.Close()
 		result.Status = utils.VerdictIE
 		return result
 	}
 
 	defer task.Delete(ctx)
-	defer stdoutWriter.Close()
-	defer stderrWriter.Close()
-	defer stdoutReader.Close()
-	defer stderrReader.Close()
-
-	// get real time log stream
-	select {
-	case msg, ok := <-localQueue:
-		if !ok {
-
-		}
-		utils.StreamContainerLogsToRMQ(ctx, rules.OutStreamQueueName, stdoutReader, rmqm, msg)
-		utils.StreamContainerLogsToRMQ(ctx, rules.ErrStreamQueueName, stderrReader, rmqm, msg)
-	case ctx.Done():
-
-	}
 
 	// get exit status channel
 	statusC, err := task.Wait(ctx)
 	if err != nil {
+		stderrWriter.Close()
+		stdoutWriter.Close()
 		result.Status = utils.VerdictCE
 		return result
 	}
 
 	// start task execution
 	if err := task.Start(ctx); err != nil {
+		stderrWriter.Close()
+		stdoutWriter.Close()
 		result.Status = utils.VerdictIE
 		return result
 	}
 
-	timeoutDuration := time.Duration(rules.Timeoutsec) * time.Second
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		select {
+		case msg, ok := <-localQueue:
+			if ok {
+				utils.StreamContainerLogsToRMQ(ctx, rules.OutStreamQueueName, stdoutReader, rmqm, msg)
+			}
+		case <-ctx.Done():
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		select {
+		case msg, ok := <-localQueue:
+			if ok {
+				utils.StreamContainerLogsToRMQ(ctx, rules.ErrStreamQueueName, stderrReader, rmqm, msg)
+			}
+		case <-ctx.Done():
+		}
+	}()
+
+	timeoutDuration := time.Duration(rules.Timeoutsec)*time.Second + 5 // extra 5 seconds at container level
 	ctxTimeout, cancel := context.WithTimeout(ctx, timeoutDuration)
 	defer cancel()
 
 	// dynamic wait block
+	var status containerd.ExitStatus
 	select {
 	case status = <-statusC:
 
@@ -103,14 +118,19 @@ func execSubm(
 		}
 	}
 
+	stderrWriter.Close()
+	stdoutWriter.Close()
+
+	// wait for  logging goroutines to fully finish scanning and flush remaining logs
+	wg.Wait()
+
 	// block till exit status
-	if status.Error() != nil {
+	if status.ExitCode() != 0 {
 		result.Status = utils.VerdictWA
 		return result
 	}
 
 	log.Printf("Container task exited with status code %v", status.ExitCode())
-
 	result.Status = utils.VerdictAC
 	return result
 }

@@ -26,9 +26,9 @@ type LimitsConfig struct {
 }
 
 type RunnerConfig struct {
-	RunnerName string   `yaml:"name"`
-	RunnerID   string   `yaml:"runner_id"`
-	Images     []string `yaml:"images"`
+	RunnerName string            `yaml:"name"`
+	RunnerID   string            `yaml:"runner_id"`
+	Images     map[string]string `yaml:"images"`
 
 	Scheduler SchedulerConfig `yaml:"scheduler"`
 	Limits    LimitsConfig    `yaml:"limits"`

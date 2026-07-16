@@ -6,7 +6,8 @@ import (
 	"log"
 	"shared"
 
-	containerd "github.com/containerd/containerd/v2/client"
+	containerd "github.com/containerd/containerd"
+	oci "github.com/containerd/containerd/oci"
 
 	"local/runner/utils"
 )
@@ -24,7 +25,8 @@ func ExecSubmission(
 
 	// 2. Pull the container image & build OCI specs
 	image := getContainerImage(rules.Image, client, ctx)
-	opts := build_ociSpecOpts(image, rules)
+	var opts []oci.SpecOpts
+	opts = build_ociSpecOpts(rules)
 	if err := build_agentExecSpec(rules); err != nil {
 		return utils.ResultSpec{}, err
 	}
@@ -35,6 +37,7 @@ func ExecSubmission(
 		ctx,
 		rules.ContainerID,
 		containerd.WithNewSnapshot(snapshotID, image),
+		containerd.WithImage(image),
 		containerd.WithNewSpec(opts...),
 		containerd.WithRuntime("runc", nil),
 	)

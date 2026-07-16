@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestRADScheduler(t *testing.T) {
+func Test_RADScheduler(t *testing.T) {
 
 	var rd utils.RADSDecision
 

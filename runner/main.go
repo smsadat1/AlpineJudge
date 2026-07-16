@@ -126,14 +126,13 @@ func main() {
 				log.Printf("Allocating slot. Launching isolation runtime for message ID: %s\n", delivery.MessageId)
 
 				jobspec, err := utils.ProcessJobSpec(ctx, msg)
-				result, err := executor.ExecSubmission(cCtx, *client, *s3m, jobspec, *rmqm)
+				result, err := executor.ExecSubmission(cCtx, client, *s3m, jobspec, *rmqm)
 				if err != nil {
 					log.Printf("Execution Failure: Container run errored out: %v", err)
 					_ = delivery.Nack(false, false) // drop bad tasks (add DLQ here)
 					return
 				}
 
-				// TODO: Implement pipeline: result -> json format -> S3
 				_ = delivery.Ack(false) // notify RMQ that task is cleared
 				log.Printf("Task successfully executed. Slot released.")
 			}(msg)

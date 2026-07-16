@@ -1,0 +1,11 @@
+Tests to make: 
+
+-2 Test_SystemMonitor
+-1 Test_RADScheduler 
+ 0 Test_LoadRunnerConfigs
+ 1 Test_AjAgent
+ 2 Test_EnsureContiainerImage
+ 3 Test_build_ociSpecOpts
+ 4 Test_build_agentExecSpec
+ 5 Test_prepareExecrules
+ 6 Test_ExecSubmission

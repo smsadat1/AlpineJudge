@@ -5,8 +5,8 @@ import (
 	"context"
 	"log"
 
+	containerd "github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
-	containerd "github.com/containerd/containerd/v2/client"
 )
 
 // check image cache first then download image if cache miss

@@ -8,21 +8,16 @@ import (
 	"log"
 	"os"
 
-	containerd "github.com/containerd/containerd/v2/client"
-	"github.com/containerd/containerd/v2/pkg/oci"
+	oci "github.com/containerd/containerd/oci"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func build_ociSpecOpts(
-	image containerd.Image, rules utils.ExecRules,
-) []oci.SpecOpts {
+func build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 
 	memoryBytes := uint64(rules.MemoryLimitMB * 1024 * 1024)
 	period := uint64(100000)
 
 	opts := []oci.SpecOpts{
-		// image
-		oci.WithImageConfig(image),
 
 		// resource limits
 		oci.WithMemoryLimit(memoryBytes),
