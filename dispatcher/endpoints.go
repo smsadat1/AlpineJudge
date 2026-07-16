@@ -46,6 +46,7 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusMethodNotAllowed, fmt.Errorf("Method not allowed"))
 		return
 	}
+	jobID := r.PathValue("submission_id")
 
 	var submission SubmissionSpec
 
@@ -75,7 +76,7 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 	//package message data frame for RabbitMQ delivery
 	msg := amqp.Publishing{
 		ContentType: "application/json",
-		MessageId:   fmt.Sprintf("sub_%d", time.Now().UnixNano()),
+		MessageId:   jobID,
 		Body:        bodyBytes,
 	}
 
@@ -91,7 +92,9 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 	// successful submission
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{"status": "Queued"})
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "Queued", "job_id": jobID,
+	})
 }
 
 func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
