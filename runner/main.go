@@ -94,7 +94,7 @@ func main() {
 
 		case sysm := <-sysMetrics:
 			currentDecisions := scheduler.RADScheduler(sysm.AvailableMemoryMB, sysm.CPUCoreCount, runningContainers)
-			log.Printf("Resource Sync -> Slots Available: %d | Idle: %d | Running Tasks: %d\n",
+			log.Printf("Resource Sync -> Slots Available: %d | Idle: %f | Running Tasks: %d\n",
 				currentDecisions.AvailableSlots, currentDecisions.IdleSlots, runningContainers)
 
 		case msg, ok := <-localQueue:
