@@ -26,7 +26,7 @@ func ExecSubmission(
 	// 2. Pull the container image & build OCI specs
 	image := getContainerImage(rules.Image, client, ctx)
 	var opts []oci.SpecOpts
-	opts = build_ociSpecOpts(rules)
+	opts = Build_ociSpecOpts(rules)
 	if err := build_agentExecSpec(rules); err != nil {
 		return utils.ResultSpec{}, err
 	}

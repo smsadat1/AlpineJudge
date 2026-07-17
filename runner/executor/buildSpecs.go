@@ -12,12 +12,13 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
+func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 
 	memoryBytes := uint64(rules.MemoryLimitMB * 1024 * 1024)
 	period := uint64(100000)
 
 	opts := []oci.SpecOpts{
+		oci.WithDefaultSpec(),
 
 		// resource limits
 		oci.WithMemoryLimit(memoryBytes),
@@ -28,8 +29,8 @@ func build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 		oci.WithMounts([]specs.Mount{
 			{
 				// source code (single file mount)
-				Source:      rules.CodePathContainer,
-				Destination: rules.CodePathHost,
+				Source:      rules.CodePathHost,
+				Destination: rules.CodePathContainer,
 				Type:        "bind",
 				Options:     []string{"bind", "ro"},
 			},

@@ -3,13 +3,13 @@ name: alpine-judge-runner
 runner_id: runner-001
 
 images:
-  c     : ghcr.io/alpinejudge/gcc:v0.1.0
-  cc    : ghcr.io/alpinejudge/gcc:v0.1.0
-  cpp   : ghcr.io/alpinejudge/gcc:v0.1.0
-  py    : ghcr.io/alpinejudge/python:v0.1.0
-  go    : ghcr.io/alpinejudge/go:v0.1.0
-  java  : ghcr.io/alpinejudge/java:v0.1.0
-  js    : ghcr.io/alpinejudge/node:v0.1.0
+  c     : ghcr.io/smsadat1/ajgcc:v0.1.0
+  cc    : ghcr.io/smsadat1/ajgcc:v0.1.0
+  cpp   : ghcr.io/smsadat1/ajgcc:v0.1.0
+  py    : ghcr.io/smsadat1/ajpython:v0.1.0
+  go    : ghcr.io/smsadat1/ajgo:v0.1.0
+  java  : ghcr.io/smsadat1/ajjava:v0.1.0
+  js    : ghcr.io/smsadat1/ajnode:v0.1.0
 
 scheduler:
   over_sub_factor: 2
