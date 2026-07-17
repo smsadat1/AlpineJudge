@@ -12,6 +12,7 @@ import (
 
 type ExecRules struct {
 	// system
+	RunnerID    string
 	ContainerID string
 	Image       string
 	CompileArgs []string // agent
@@ -39,6 +40,10 @@ type ExecRules struct {
 
 // execution specification for in-container agent
 type AgentExecSpec struct {
+
+	// system
+	RunnerID string
+
 	// resource
 	LogLimitKB uint32
 	TimeoutSec uint32

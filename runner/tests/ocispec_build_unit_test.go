@@ -19,6 +19,7 @@ func Test_Build_ociSpecOpts(t *testing.T) {
 	testEnv["CONFIG_PATH"] = "/workspace/execspec.json"
 
 	testRules := utils.ExecRules{
+		RunnerID:    "runner-001",
 		ContainerID: "container-123",
 		Image:       "ghcr.io/smsadat1/ajgo:v0.1.0",
 		CompileArgs: []string{""},

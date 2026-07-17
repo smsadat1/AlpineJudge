@@ -67,4 +67,6 @@ require (
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 )
+
+// because of int64 to *int64 change in runtime-spec api, used this to fix that
 replace github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.1.0

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"shared"
 
 	containerd "github.com/containerd/containerd"
@@ -27,8 +28,13 @@ func ExecSubmission(
 	image := getContainerImage(rules.Image, client, ctx)
 	var opts []oci.SpecOpts
 	opts = Build_ociSpecOpts(rules)
-	if err := build_agentExecSpec(rules); err != nil {
+	err, data := Build_agentExecSpec(rules)
+	if err != nil {
 		return utils.ResultSpec{}, err
+	}
+
+	if err := os.WriteFile("/tmp/execspec.json", data, os.ModeAppend); err != nil {
+		return utils.ResultSpec{}, fmt.Errorf("Failed to create agent execspec json:  %v\n", err)
 	}
 
 	// 3. Initiate the container

@@ -3,10 +3,8 @@ package executor
 
 import (
 	"encoding/json"
-	"fmt"
 	"local/runner/utils"
 	"log"
-	"os"
 
 	oci "github.com/containerd/containerd/oci"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -18,6 +16,7 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 	period := uint64(100000)
 
 	opts := []oci.SpecOpts{
+		// start with default Linux specs or else OCI spec fails
 		oci.WithDefaultSpec(),
 
 		// resource limits
@@ -69,24 +68,22 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 	return opts
 }
 
-func build_agentExecSpec(rules utils.ExecRules) error {
+func Build_agentExecSpec(rules utils.ExecRules) (error, []byte) {
 
 	agentSpec := utils.AgentExecSpec{
+		RunnerID:    rules.RunnerID,
 		LogLimitKB:  rules.LogLimitKB,
 		TimeoutSec:  rules.Timeoutsec,
-		TestSetPath: rules.TestID,
+		TestSetPath: "/workspace/" + rules.TestID + "/",
 		CompileArgs: rules.CompileArgs,
 		RunArgs:     rules.RunArgs,
 	}
 
 	data, err := json.Marshal(agentSpec)
 	if err != nil {
-		return err
+		return err, []byte{}
 	}
 
-	if err := os.WriteFile("/tmp/execspec.json", data, os.ModeAppend); err != nil {
-		return fmt.Errorf("Failed to create agent execspec json:  %v\n", err)
-	}
 	log.Println("Created agent exespec json")
-	return nil
+	return nil, data
 }
