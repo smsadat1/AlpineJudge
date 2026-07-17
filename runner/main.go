@@ -127,6 +127,7 @@ func main() {
 
 				jobspec, err := utils.ProcessJobSpec(ctx, msg)
 				result, err := executor.ExecSubmission(cCtx, client, *s3m, jobspec, *rmqm)
+				_ = result
 				if err != nil {
 					log.Printf("Execution Failure: Container run errored out: %v", err)
 					_ = delivery.Nack(false, false) // drop bad tasks (add DLQ here)
