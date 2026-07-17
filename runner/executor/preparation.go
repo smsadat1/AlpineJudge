@@ -29,14 +29,15 @@ func downloadFileS3(
 	return nil
 }
 
-func prepareExecrules(
+func PrepareExecrules(
 	ctx context.Context, s3m shared.S3Manager, jobspec shared.JobSpec,
+	testMode bool, // used only for tests | must stay false for production
 ) (error, utils.ExecRules) {
 
-	submID := jobspec.SubmissionID
+	// submID := jobspec.SubmissionID
 	language := jobspec.Language
 	version := jobspec.Version
-	testID := jobspec.Testset + jobspec.TestsetVersion
+	testID := jobspec.Testset
 
 	var compileArgs []string
 	var runArgs []string
@@ -124,33 +125,43 @@ func prepareExecrules(
 	}
 
 	containerImage := utils.RunCfg.Images[language]
-	hostWorkDir := "/tmp/ajrunner/" + "/"
-	hostSrcFilePath := hostWorkDir + submID + "." + language
+	hostWorkDir := "/tmp/ajrunner/" + utils.RunCfg.RunnerID + "/"
+	hostSrcFilePath := hostWorkDir + "main." + language
 	hostTestFileDir := hostWorkDir + testID
 
 	containerSrcFilePath := "/workspace/main." + language
-	containerTestFileDir := "/workspace/" + testID
+	containerTestFileDir := "/workspace/" + testID + "/" + jobspec.TestsetVersion + "/"
+
+	// for other service's usage and testcase overrides
+	HostSrcFilePath = hostSrcFilePath
+	HostTestFilePath = hostTestFileDir
+
+	if testMode {
+		HostSrcFilePath = "artifacts/main.cc"
+		HostTestFilePath = "artifacts/ts001"
+	}
 
 	err := downloadFileS3(
-		ctx, s3m, jobspec.Bucket, jobspec.SrcCodeS3Key, jobspec.TestsetS3Key, hostSrcFilePath, hostTestFileDir,
+		ctx, s3m,
+		jobspec.Bucket,
+		jobspec.SrcCodeS3Key,
+		jobspec.TestsetS3Key,
+		HostSrcFilePath,
+		HostTestFilePath,
 	)
 
 	if err != nil {
 		return err, utils.ExecRules{}
 	}
 
-	// for other service's usage
-	HostSrcFilePath = hostSrcFilePath
-	HostTestFilePath = hostTestFileDir
-
 	execRules := utils.ExecRules{
 		Image:       containerImage,
 		CompileArgs: compileArgs,
 		RunArgs:     runArgs,
 
-		CodePathHost:         hostSrcFilePath,
+		CodePathHost:         HostSrcFilePath,
 		CodePathContainer:    containerSrcFilePath,
-		TestsetPathHost:      hostTestFileDir,
+		TestsetPathHost:      HostTestFilePath,
 		TestsetPathContainer: containerTestFileDir,
 
 		CpuQuota:       float64(utils.RunCfg.Limits.CPUQuota),

@@ -19,7 +19,7 @@ func ExecSubmission(
 ) (utils.ResultSpec, error) {
 
 	// 1. Prepare execution rules
-	err, rules := prepareExecrules(ctx, s3m, jobspec)
+	err, rules := PrepareExecrules(ctx, s3m, jobspec, false)
 	if err != nil {
 		return utils.ResultSpec{}, fmt.Errorf("Failed to generate execution rules\n")
 	}
