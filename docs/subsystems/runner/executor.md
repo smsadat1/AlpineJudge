@@ -16,7 +16,8 @@ Executor is responsible for:
 
 - Pulling or retrieving cached container images.
 - Building OCI runtime specifications.
-- Creating and managing container lifecycle.
+- Creating, managing container lifecycle & injecting in-container agent.
+- Generating `execspec.json` for in-container agent.
 - Executing compilation (if required).
 - Running all test cases.
 - Monitoring execution timeout.
@@ -113,7 +114,7 @@ Retrieve Image
         ↓
 Create Snapshot
         ↓
-Create Container
+Create Container & inject in-container agent
         ↓
 Create Task
         ↓
@@ -135,13 +136,9 @@ Every submission executes inside its own isolated container.
 ## Execution Model
 
 Each submission is executed inside a single container.
-
-Compiled languages are compiled once.
-
+Compiled languages are compiled once by in-container agent.
 Each test case is executed as a fresh process to ensure that program state does not leak between tests.
-
 After all test cases complete—or execution terminates due to an error or resource limit—the container is destroyed.
-
 ---
 
 ## Execution Events
@@ -150,11 +147,11 @@ Executor publishes execution events through RabbitMQ.
 
 Typical events include:
 
-- Container Created
-- Compiling
-- Running Test 1/N
-- Running Test 2/N
-- ...
+- Container Created 
+- In-container agent is injected inside container via custom image
+- Agent starts compilation
+- Agent continues running program
+- If HaltOnFirstError set true then agent stops on the first error or else doesn't stop unless there's CE or IE 
 - Finished
 
 These events are consumed by Dispatcher to provide live progress updates through the SSE endpoint.
@@ -180,7 +177,8 @@ Regardless of execution outcome, Executor attempts to clean up all container res
 ## Design Notes
 
 - Executor integrates directly with `containerd`; Docker is not used.
-- gVisor (`runsc`) is used as the OCI runtime for sandbox isolation.
+- `runc` is used as the OCI runtime for sandbox isolation.
 - Container images are cached locally by `containerd` and pulled only when absent.
+- Images are stored under `ghcr.io/smsadat1/` and new images should be uploaded there.
 - Execution artifacts are stored in S3, making the Runner stateless.
 - Executor performs no scheduling decisions; scheduling is delegated to the RAD Scheduler.
