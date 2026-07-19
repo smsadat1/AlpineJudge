@@ -35,10 +35,17 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 			},
 			{
 				// agent execution specs (single file mount)
-				Source:      "/tmp/execspec.json",
+				Source:      "/tmp/alpinejudge/" + rules.RunnerID + "/execspec.json",
 				Destination: "/workspace/execspec.json",
 				Type:        "bind",
 				Options:     []string{"bind", "ro"},
+			},
+			{
+				// unix socker for agent to stream execution state
+				Source:      "/tmp/alpinejudge/" + rules.RunnerID + "/agentstream.sock",
+				Destination: "/workspace/agentstream.sock",
+				Type:        "bind",
+				Options:     []string{"bind", "rw"},
 			},
 			{
 				// testset (direotory mount)
@@ -51,6 +58,8 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 
 		oci.WithEnv([]string{
 			"CONFIG_PATH=/workspace/execspec.json",
+			"TESTSET_PATH=/workspace/" + rules.TestID + "/",
+			"STREAM_SOCKET_PATH=/workspace/agentstream.sock",
 		}),
 	}
 
@@ -71,12 +80,12 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 func Build_agentExecSpec(rules utils.ExecRules) (error, []byte) {
 
 	agentSpec := utils.AgentExecSpec{
-		RunnerID:    rules.RunnerID,
-		LogLimitKB:  rules.LogLimitKB,
-		TimeoutSec:  rules.Timeoutsec,
-		TestSetPath: "/workspace/" + rules.TestID + "/",
-		CompileArgs: rules.CompileArgs,
-		RunArgs:     rules.RunArgs,
+		SubmissionID: rules.SubmissionID,
+		LogLimitKB:   rules.LogLimitKB,
+		TimeoutSec:   rules.Timeoutsec,
+		TestSetPath:  "/workspace/" + rules.TestID + "/",
+		CompileArgs:  rules.CompileArgs,
+		RunArgs:      rules.RunArgs,
 	}
 
 	data, err := json.Marshal(agentSpec)
