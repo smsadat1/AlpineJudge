@@ -50,8 +50,8 @@ func Test_Build_agentExecSpec(t *testing.T) {
 	}
 
 	// Assert using clean struct properties
-	if agentConfig.RunnerID != testRules.RunnerID {
-		t.Errorf("Expected %s, got %s", testRules.RunnerID, agentConfig.RunnerID)
+	if agentConfig.SubmissionID != testRules.SubmissionID {
+		t.Errorf("Expected %s, got %s", testRules.SubmissionID, agentConfig.SubmissionID)
 	}
 
 	if agentConfig.TimeoutSec != testRules.Timeoutsec {
