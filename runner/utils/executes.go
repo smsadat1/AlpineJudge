@@ -12,12 +12,13 @@ import (
 
 type ExecRules struct {
 	// system
-	RunnerID    string
-	ContainerID string
-	Image       string
-	CompileArgs []string // agent
-	RunArgs     []string // agent
-	TestID      string
+	RunnerID     string
+	SubmissionID string
+	ContainerID  string
+	Image        string
+	CompileArgs  []string // agent
+	RunArgs      []string // agent
+	TestID       string
 
 	// environment
 	CodePathHost         string            // oci | ok
@@ -42,16 +43,24 @@ type ExecRules struct {
 type AgentExecSpec struct {
 
 	// system
-	RunnerID string
+	SubmissionID     string `json:"submission_id"`
+	HaltOnFirstError bool   `json:"halt_on_first_error"`
 
 	// resource
-	LogLimitKB uint32
-	TimeoutSec uint32
+	LogLimitKB uint32 `json:"log_limit_kb"`
+	TimeoutSec uint32 `json:"timeout_sec"`
 
 	// specifications
-	TestSetPath string
-	CompileArgs []string
-	RunArgs     []string
+	TestSetPath string   `json:"testset_path"`
+	CompileArgs []string `json:"compile_args"`
+	RunArgs     []string `json:"run_args"`
+}
+
+type AgentEventSpec struct {
+	EvenType     string
+	Status       string
+	SubmissionID string
+	Details      string
 }
 
 // stream real time logs from container
