@@ -8,17 +8,25 @@ import (
 	"fmt"
 	"local/runner/utils"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
-var WA = fmt.Errorf("Wrong answer")
-var IE = fmt.Errorf("Internal error")
-var OLE = errors.New("Log limit exceeded")
-var TLE = fmt.Errorf("Time limit exceeded")
+var (
+	WA  = "Wrong answer"        // acceptable
+	IE  = "Internal error"      // not acceptable
+	OLE = "Log limit exceeded"  // not acceptable
+	TLE = "Time limit exceeded" // not acceptable
+	OK  = "Running test"        // acceptable
+)
+var ErrorOLE = errors.New(OLE)
 
 type LimitExceededWriter struct {
 	buf   bytes.Buffer
@@ -26,15 +34,21 @@ type LimitExceededWriter struct {
 }
 
 func (w *LimitExceededWriter) Write(p []byte) (int, error) {
-	if int64(w.buf.Len()+len(p)) > w.limit {
-		return 0, OLE
+	// Defensively block memory allocation before it reaches the buffer
+	if int64(w.buf.Len())+int64(len(p)) > w.limit {
+		// Write only up to the remaining capacity to capture partial logs for debugging
+		remaining := w.limit - int64(w.buf.Len())
+		if remaining > 0 {
+			w.buf.Write(p[:remaining])
+		}
+		return 0, ErrorOLE
 	}
 	return w.buf.Write(p)
 }
 
 func runTestCase(
 	spec utils.AgentExecSpec, inputPath string, expectedPath string,
-) error {
+) utils.AgentEventSpec {
 
 	// per testcase context & timeout
 	tcCtx, tcCancel := context.WithTimeout(
@@ -45,99 +59,179 @@ func runTestCase(
 
 	stdin, err := os.Open(inputPath)
 	if err != nil {
-		return IE
+		return utils.AgentEventSpec{
+			EvenType:     "ERROR",
+			Status:       IE,
+			SubmissionID: spec.SubmissionID,
+			Details:      err.Error(),
+		}
 	}
 	defer stdin.Close()
 
 	expected, err := os.ReadFile(expectedPath)
 	if err != nil {
-		return IE
+		return utils.AgentEventSpec{
+			EvenType:     "ERROR",
+			Status:       IE,
+			SubmissionID: spec.SubmissionID,
+			Details:      err.Error(),
+		}
 	}
 
 	if len(spec.RunArgs) == 0 {
-		return IE
+		return utils.AgentEventSpec{
+			EvenType:     "ERROR",
+			Status:       IE,
+			SubmissionID: spec.SubmissionID,
+			Details:      "Missing execution arguments in run specifications",
+		}
 	}
 
 	cmd := exec.CommandContext(tcCtx, spec.RunArgs[0], spec.RunArgs[1:]...)
 	cmd.Stdin = stdin
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // Isolate process groups (Linux/Unix)
 
 	stdout := &LimitExceededWriter{limit: int64(spec.LogLimitKB) * 1000}
 	stderr := &LimitExceededWriter{limit: int64(spec.LogLimitKB) * 1000}
-
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	err = cmd.Run()
-	if err != nil {
-		if errors.Is(err, OLE) {
-			return OLE
+	if err := cmd.Start(); err != nil {
+		return utils.AgentEventSpec{
+			EvenType:     "ERROR",
+			Status:       IE,
+			SubmissionID: spec.SubmissionID,
+			Details:      err.Error(),
 		}
-
-		if tcCtx.Err() == context.DeadlineExceeded {
-			return TLE
-		}
-
-		return IE
 	}
 
+	// Wait for completion via channel to prevent stream blockages from locking execution loop
+	defer func() {
+		if cmd.Process != nil {
+			// Kill group (-PID)
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+	}()
+
+	// Wait for completion via channel to prevent stream blockages from locking execution loop
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case <-tcCtx.Done():
+		// Force terminate process tree immediately on timeout deadline expiration
+		if cmd.Process != nil {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+		return utils.AgentEventSpec{
+			EvenType:     "ERROR",
+			Status:       TLE,
+			SubmissionID: spec.SubmissionID,
+			Details:      "Process exceeded strict execution runtime limitations",
+		}
+	case runErr := <-done:
+		if runErr != nil {
+			// Check if the exit error was triggered by our custom OLE memory guard
+			if errors.Is(runErr, err) || strings.Contains(stderr.buf.String(), OLE) {
+				return utils.AgentEventSpec{
+					EvenType:     "ERROR",
+					Status:       OLE,
+					SubmissionID: spec.SubmissionID,
+					Details:      runErr.Error(),
+				}
+			}
+
+			// Detect manual exits vs crashes
+			return utils.AgentEventSpec{
+				EvenType:     "ERROR",
+				Status:       WA, // Runtime errors (like segmentation faults) return as execution mismatch/WA
+				SubmissionID: spec.SubmissionID,
+				Details:      fmt.Sprintf("Runtime Exception: %v | Stderr: %s", runErr, stderr.buf.String()),
+			}
+		}
+	}
+
+	// Output evaluation
 	actualOut := strings.TrimSpace(stdout.buf.String())
 	wantedOut := strings.TrimSpace(string(expected))
 
 	if actualOut != wantedOut {
-		return WA
+		return utils.AgentEventSpec{
+			EvenType:     "ACCEPT",
+			Status:       WA,
+			SubmissionID: spec.SubmissionID,
+			Details:      "Output mismatch against expected testcase answers",
+		}
 	}
 
-	return nil
+	return utils.AgentEventSpec{
+		EvenType:     "ACCEPT",
+		Status:       OK,
+		SubmissionID: spec.SubmissionID,
+		Details:      "",
+	}
 }
 
 // in-container agent to run execution
 func RunnerAgent() {
 
-	// find & load /workspace/execspec.json to spec
-	jsonData, err := os.ReadFile("/workspace/execspec.json")
+	// 1. Load env vars
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, reading from direct system environment variables")
+	}
+
+	// 2. Find & load /workspace/execspec.json to spec
+	jsonData, err := os.ReadFile(os.Getenv("CONFIG_PATH"))
 	if err != nil {
 		log.Fatalf("Failed to load execspec %v\n", err)
 	}
 
+	// 3. Find & connect to event stream socket
+	streamConn, err := net.Dial("unix", os.Getenv("STREAM_SOCKET_PATH"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer streamConn.Close()
+
+	// an encoder to auto append newlines
+	streamEnconder := json.NewEncoder(streamConn)
+
+	// 4. Unmarshal from JSON to Spec
 	var execSpec utils.AgentExecSpec
 	if err := json.Unmarshal(jsonData, &execSpec); err != nil {
 		log.Fatalf("Failed to unmarshal execspec %v\n", err)
 	}
 
+	// 5. Create context
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
 		time.Duration(execSpec.TimeoutSec)*time.Second,
 	)
 	defer cancel()
 
-	// compile stage
+	// 6. Compilation stage (if any)
 	if len(execSpec.CompileArgs) > 0 {
-		cmd := exec.CommandContext(
-			ctx, execSpec.CompileArgs[0],
-			execSpec.CompileArgs[1:]...,
-		)
-
+		cmd := exec.CommandContext(ctx, execSpec.CompileArgs[0], execSpec.CompileArgs[1:]...)
 		stdout := &LimitExceededWriter{limit: int64(execSpec.LogLimitKB) * 1000}
 		stderr := &LimitExceededWriter{limit: int64(execSpec.LogLimitKB) * 1000}
 
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
 
-		err := cmd.Run()
-		if err != nil {
-			if errors.Is(err, OLE) {
-				log.Fatal(OLE)
-			}
-			log.Fatal(err)
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("Compilation phase failed: %v", err)
 		}
 	}
 
-	// run stage
-	entries, err := os.ReadDir(execSpec.TestSetPath)
+	// 7. Find & Read given testset
+	entries, err := os.ReadDir(os.Getenv("TESTSET_PATH"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// 8. Run the program & iterate over given testset
 	for _, ts := range entries {
 
 		if !ts.IsDir() {
@@ -145,11 +239,20 @@ func RunnerAgent() {
 		}
 
 		testcaseDir := filepath.Join(execSpec.TestSetPath, ts.Name())
-		inputPath := filepath.Join(testcaseDir + "in.txt")
-		expectedPath := filepath.Join(testcaseDir + "out.txt")
+		inputPath := filepath.Join(testcaseDir, "in.txt")
+		expectedPath := filepath.Join(testcaseDir, "out.txt")
 
-		if err := runTestCase(execSpec, inputPath, expectedPath); err != nil {
-			log.Fatal(err)
+		eventStatus := runTestCase(execSpec, inputPath, expectedPath)
+
+		// stream events
+		if err := streamEnconder.Encode(eventStatus); err != nil {
+			log.Printf("Failed to write to event stream pipeline: %v", err)
+			break
+		}
+
+		// continue unless HaltOnFirstError is True & no major errors (OLE IE)
+		if execSpec.HaltOnFirstError && eventStatus.EvenType == "ERROR" {
+			break
 		}
 	}
 }
