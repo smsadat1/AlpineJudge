@@ -1,18 +1,22 @@
 package ajagent
 
 import (
+	"encoding/json"
 	"local/runner/utils"
+	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
 
 type TestHarness struct {
-	SocketPath  string
-	TestsetPath string
-	Listener    net.Listener
-	TestSpec    utils.AgentExecSpec
+	SocketPath     string
+	TestsetPath    string
+	Listener       net.Listener
+	TestSpec       utils.AgentExecSpec
+	streamEnconder *json.Encoder
 }
 
 /*
@@ -68,6 +72,67 @@ func (th *TestHarness) InitHarnessTestSpec() {
 		TestSetPath:      "artifacts/ts001",
 		CompileArgs:      []string{"/usr/bin/g++", "-std=c++17", "-Wall", "-Wextra", "-o", "artifacts/main", ""},
 		RunArgs:          []string{"./artifacts/main"},
+	}
+}
+
+func (th *TestHarness) assert(t *testing.T, expected string, recieved string) {
+	if expected != recieved {
+		t.Errorf("Expected: %v | Received: %v", expected, recieved)
+	}
+}
+
+func (th *TestHarness) connect(t *testing.T) {
+	// find & connect to event stream socket
+	testStreamConn, err := net.Dial("unix", os.Getenv("STREAM_SOCKET_PATH"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer testStreamConn.Close()
+
+	// an encoder to auto append newlines
+	th.streamEnconder = json.NewEncoder(testStreamConn)
+
+}
+
+func (th *TestHarness) compile(t *testing.T) {
+
+	if len(th.TestSpec.CompileArgs) > 0 {
+		cmd := exec.Command(th.TestSpec.CompileArgs[0], th.TestSpec.CompileArgs[1:]...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Compilation failed: %v\nOutput: %s", err, string(output))
+		}
+	}
+}
+
+func (th *TestHarness) run(t *testing.T) {
+	entries, err := os.ReadDir(os.Getenv("TESTSET_PATH"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, ts := range entries {
+
+		if !ts.IsDir() {
+			continue
+		}
+
+		testcaseDir := filepath.Join(th.TestSpec.TestSetPath, ts.Name())
+		inputPath := filepath.Join(testcaseDir, "in.txt")
+		expectedPath := filepath.Join(testcaseDir, "out.txt")
+
+		eventStatus := runTestCase(th.TestSpec, inputPath, expectedPath)
+
+		// stream events
+		if err := th.streamEnconder.Encode(eventStatus); err != nil {
+			log.Printf("Failed to write to event stream pipeline: %v", err)
+			break
+		}
+
+		// continue unless HaltOnFirstError is True & no major errors (OLE IE)
+		if th.TestSpec.HaltOnFirstError && eventStatus.EvenType == "ERROR" {
+			break
+		}
 	}
 }
 

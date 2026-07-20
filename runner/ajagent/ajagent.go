@@ -22,6 +22,7 @@ import (
 var (
 	WA  = "Wrong answer"          // acceptable
 	IE  = "Internal error"        // not acceptable
+	PE  = "Presentation error"    // acceptable
 	CE  = "Compilation error"     // not acceptable
 	OLE = "Output limit exceeded" // not acceptable
 	TLE = "Time limit exceeded"   // not acceptable
@@ -230,58 +231,45 @@ func runTestCase(
 // in-container agent to run execution
 func RunnerAgent() {
 
-	// 1. Load env vars
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, reading from direct system environment variables")
-	}
-
-	// 2. Find & load /workspace/execspec.json to spec
-	jsonData, err := os.ReadFile(os.Getenv("CONFIG_PATH"))
-	if err != nil {
-		log.Fatalf("Failed to load execspec %v\n", err)
-	}
-
-	listener, err := net.Listen("unix", os.Getenv("STREAM_SOCKET_PATH"))
-	if err != nil {
-		log.Fatalf("Failed to create socket listener: %v", err)
-	}
-
-	// remove stale socket file if left behind & start listener
-	serverDone := make(chan struct{})
-	_ = os.Remove(os.Getenv("STREAM_SOCKET_PATH"))
-
-	go func() {
-		defer close(serverDone)
-
-		// accept the incoming connection from your agent runner
-		conn, err := listener.Accept()
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-
-		// Host reads events off the socket
-		decoder := json.NewDecoder(conn)
-		for {
-			var event utils.AgentEventSpec
-			if err := decoder.Decode(&event); err != nil {
-				break // Connection closed or EOF reached
-			}
-			fmt.Printf("--> [SOCKET EVENT STREAM] Type: %-7s | Status: %-20s | Detail: %s\n",
-				event.EvenType, event.Status, event.Details)
-			// t.Logf("[HOST RECEIVED EVENT] Type: %s | Status: %s | Detail: %s", event.EvenType, event.Status, event.Details)
-		}
-	}()
-
-	// 3. Find & connect to event stream socket
+	// 1. Find & connect to event stream socket
 	streamConn, err := net.Dial("unix", os.Getenv("STREAM_SOCKET_PATH"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer streamConn.Close()
 
+	eventStatus := utils.AgentEventSpec{}
+
 	// an encoder to auto append newlines
 	streamEnconder := json.NewEncoder(streamConn)
+
+	// 2. Load env vars
+	if err := godotenv.Load(); err != nil {
+		log.Println()
+		// stream events
+		eventStatus.EvenType = "FALLBACK"
+		eventStatus.Status = PE
+		eventStatus.SubmissionID = ""
+		eventStatus.Details = "No .env file found, reading from direct system environment variables"
+		if err := streamEnconder.Encode(eventStatus); err != nil {
+			log.Printf("Failed to write to event stream pipeline: %v", err)
+			return
+		}
+	}
+
+	// 2. Find & load /workspace/execspec.json to spec
+	jsonData, err := os.ReadFile(os.Getenv("CONFIG_PATH"))
+	if err != nil {
+		// stream events
+		eventStatus.EvenType = "ERROR"
+		eventStatus.Status = IE
+		eventStatus.SubmissionID = ""
+		eventStatus.Details = "Failed to load execspec: " + err.Error() + "\n"
+		if err := streamEnconder.Encode(eventStatus); err != nil {
+			log.Printf("Failed to write to event stream pipeline: %v", err)
+			return
+		}
+	}
 
 	// 4. Unmarshal from JSON to Spec
 	var execSpec utils.AgentExecSpec
@@ -307,16 +295,15 @@ func RunnerAgent() {
 
 		if err := cmd.Run(); err != nil {
 			// stream events
-			eventStatus := utils.AgentEventSpec{
-				EvenType:     "ERROR",
-				Status:       CE,
-				SubmissionID: execSpec.SubmissionID,
-				Details:      err.Error(),
-			}
+			eventStatus.EvenType = "ERROR"
+			eventStatus.Status = CE
+			eventStatus.SubmissionID = ""
+			eventStatus.Details = err.Error()
 			if err := streamEnconder.Encode(eventStatus); err != nil {
 				log.Printf("Failed to write to event stream pipeline: %v", err)
 				return
 			}
+			return
 		}
 	}
 
@@ -346,7 +333,7 @@ func RunnerAgent() {
 		}
 
 		// continue unless HaltOnFirstError is True & no major errors (OLE IE RE)
-		if execSpec.HaltOnFirstError && eventStatus.EvenType == "ERROR" {
+		if execSpec.HaltOnFirstError && eventStatus.Status != OK {
 			break
 		}
 	}

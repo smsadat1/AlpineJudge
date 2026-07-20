@@ -2,7 +2,6 @@ package ajagent
 
 import (
 	"encoding/json"
-	"fmt"
 	"local/runner/utils"
 	"log"
 	"net"
@@ -33,9 +32,8 @@ func Test_runTestCase_IE_MissingRunArgs(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break // Connection closed or EOF reached
 			}
-			fmt.Printf("--> [SOCKET EVENT STREAM] Type: %-7s | Status: %-20s | Detail: %s\n",
-				event.EvenType, event.Status, event.Details)
-			// t.Logf("[HOST RECEIVED EVENT] Type: %s | Status: %s | Detail: %s", event.EvenType, event.Status, event.Details)
+			th.assert(t, "ERROR", event.EvenType)
+			th.assert(t, "Internal error", event.Status)
 		}
 	}()
 

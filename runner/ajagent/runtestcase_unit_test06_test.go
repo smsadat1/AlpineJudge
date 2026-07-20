@@ -2,7 +2,6 @@ package ajagent
 
 import (
 	"encoding/json"
-	"fmt"
 	"local/runner/utils"
 	"log"
 	"net"
@@ -14,6 +13,9 @@ import (
 
 func Test_runTestCase_RE_Aborted(t *testing.T) {
 	th := NewTestHarness(t)
+	th.InitHarnessTestSpec()
+	th.TestSpec.CompileArgs[6] = "artifacts/main10.cpp"
+
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -33,14 +35,11 @@ func Test_runTestCase_RE_Aborted(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break // Connection closed or EOF reached
 			}
-			fmt.Printf("--> [SOCKET EVENT STREAM] Type: %-7s | Status: %-20s | Detail: %s\n",
-				event.EvenType, event.Status, event.Details)
-			// t.Logf("[HOST RECEIVED EVENT] Type: %s | Status: %s | Detail: %s", event.EvenType, event.Status, event.Details)
+			th.assert(t, "ERROR", event.EvenType)
+			th.assert(t, "Runtime Errror", event.Status)
+			th.assert(t, "Aborted (SIGABRT / Assertion failed)", event.Details)
 		}
 	}()
-
-	th.InitHarnessTestSpec()
-	th.TestSpec.CompileArgs[6] = "artifacts/main10.cpp"
 
 	// find & connect to event stream socket
 	testStreamConn, err := net.Dial("unix", os.Getenv("STREAM_SOCKET_PATH"))
