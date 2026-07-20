@@ -10,7 +10,6 @@ package runner
 import (
 	"context"
 	"local/runner/executor"
-	"local/runner/images"
 	"local/runner/scheduler"
 	"local/runner/utils"
 	"log"
@@ -61,8 +60,6 @@ func main() {
 
 	log.Println("Creating container namespace...")
 	cCtx := namespaces.WithNamespace(ctx, "alpine_judge")
-
-	images.EnsureContainerImages()
 
 	sysMetrics := make(chan utils.SystemMetrics, 15)
 	localQueue := make(chan amqp.Delivery, 100)
