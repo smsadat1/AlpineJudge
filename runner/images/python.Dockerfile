@@ -18,6 +18,6 @@ RUN python3.10 --version && python3.12 --version
 
 WORKDIR /workspace
 
-COPY --chmod=755 ajagent/ajagent /usr/bin/ajagent
+COPY --chmod=755 ../ajagent/ajagent /usr/bin/ajagent
 
 ENTRYPOINT [ "/usr/bin/ajagent" ]

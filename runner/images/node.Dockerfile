@@ -25,6 +25,6 @@ RUN ln -s /opt/node20/bin/node /usr/bin/node20 && \
 
 WORKDIR /workspace
 
-COPY --chmod=755 ajagent/ajagent /usr/bin/ajagent
+COPY --chmod=755 ../ajagent/ajagent /usr/bin/ajagent
 
 ENTRYPOINT ["/usr/bin/ajagent"]

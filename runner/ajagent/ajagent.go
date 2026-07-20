@@ -1,4 +1,4 @@
-package main
+package ajagent
 
 import (
 	"bytes"
@@ -20,30 +20,72 @@ import (
 )
 
 var (
-	WA  = "Wrong answer"        // acceptable
-	IE  = "Internal error"      // not acceptable
-	OLE = "Log limit exceeded"  // not acceptable
-	TLE = "Time limit exceeded" // not acceptable
-	OK  = "Running test"        // acceptable
+	WA  = "Wrong answer"          // acceptable
+	IE  = "Internal error"        // not acceptable
+	CE  = "Compilation error"     // not acceptable
+	OLE = "Output limit exceeded" // not acceptable
+	TLE = "Time limit exceeded"   // not acceptable
+	RE  = "Runtime Errror"        // not acceptable
+	OK  = "Running test"          // acceptable
 )
 var ErrorOLE = errors.New(OLE)
 
 type LimitExceededWriter struct {
-	buf   bytes.Buffer
-	limit int64
+	buf          bytes.Buffer
+	limit        int64
+	limitReached bool
 }
 
 func (w *LimitExceededWriter) Write(p []byte) (int, error) {
-	// Defensively block memory allocation before it reaches the buffer
+
+	// Defensively block mem alloc before it reaches the buffer
 	if int64(w.buf.Len())+int64(len(p)) > w.limit {
 		// Write only up to the remaining capacity to capture partial logs for debugging
+		w.limitReached = true
 		remaining := w.limit - int64(w.buf.Len())
 		if remaining > 0 {
 			w.buf.Write(p[:remaining])
 		}
-		return 0, ErrorOLE
+		return len(p), ErrorOLE
 	}
 	return w.buf.Write(p)
+}
+
+func (w *LimitExceededWriter) LimitReached() bool {
+	return w.limitReached
+}
+
+// signalHandler inspects process signals and maps them to appropriate judge status codes.
+// Returns (status, details, isSignal)
+func signalHandler(err error) (status string, details string, isSignal bool) {
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		return "", "", false
+	}
+
+	waitStatus, ok := exitErr.Sys().(syscall.WaitStatus)
+	if !ok {
+		return "", "", false // Exited with non-zero status, but not killed by signal
+	}
+
+	sig := waitStatus.Signal()
+
+	switch sig {
+	case syscall.SIGPIPE:
+		return OLE, "Output limit exceeded (SIGPIPE / Broken Pipe)", true
+	case syscall.SIGABRT:
+		return RE, "Aborted (SIGABRT / Assertion failed)", true
+	case syscall.SIGILL:
+		return RE, "Illegal instruction error (SIGILL)", true
+	case syscall.SIGSEGV:
+		return RE, "Segmentation fault (SIGSEGV)", true
+	case syscall.SIGFPE:
+		return RE, "Floating point exception (SIGFPE / Division by Zero)", true
+	default:
+		return RE, fmt.Sprintf("Terminated by signal: %v", sig), true
+	}
+
 }
 
 func runTestCase(
@@ -132,21 +174,32 @@ func runTestCase(
 			Details:      "Process exceeded strict execution runtime limitations",
 		}
 	case runErr := <-done:
+		// First priority: check output buffer cap
+		if stdout.LimitReached() {
+			return utils.AgentEventSpec{
+				EvenType:     "ERROR",
+				Status:       OLE,
+				SubmissionID: spec.SubmissionID,
+				Details:      "Output limit exceeded: program produced too much output",
+			}
+		}
+
+		// Second priority: check if program crashed or killed
 		if runErr != nil {
-			// Check if the exit error was triggered by our custom OLE memory guard
-			if errors.Is(runErr, err) || strings.Contains(stderr.buf.String(), OLE) {
+			status, details, signal := signalHandler(runErr)
+			if signal {
 				return utils.AgentEventSpec{
 					EvenType:     "ERROR",
-					Status:       OLE,
+					Status:       status,
 					SubmissionID: spec.SubmissionID,
-					Details:      runErr.Error(),
+					Details:      details,
 				}
 			}
 
-			// Detect manual exits vs crashes
+			// Fallback for manual non-zero exits (e.g. exit(1) or return 1 from main)
 			return utils.AgentEventSpec{
 				EvenType:     "ERROR",
-				Status:       WA, // Runtime errors (like segmentation faults) return as execution mismatch/WA
+				Status:       RE, // Runtime errors (like segmentation faults  or borken pipes)
 				SubmissionID: spec.SubmissionID,
 				Details:      fmt.Sprintf("Runtime Exception: %v | Stderr: %s", runErr, stderr.buf.String()),
 			}
@@ -188,6 +241,38 @@ func RunnerAgent() {
 		log.Fatalf("Failed to load execspec %v\n", err)
 	}
 
+	listener, err := net.Listen("unix", os.Getenv("STREAM_SOCKET_PATH"))
+	if err != nil {
+		log.Fatalf("Failed to create socket listener: %v", err)
+	}
+
+	// remove stale socket file if left behind & start listener
+	serverDone := make(chan struct{})
+	_ = os.Remove(os.Getenv("STREAM_SOCKET_PATH"))
+
+	go func() {
+		defer close(serverDone)
+
+		// accept the incoming connection from your agent runner
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// Host reads events off the socket
+		decoder := json.NewDecoder(conn)
+		for {
+			var event utils.AgentEventSpec
+			if err := decoder.Decode(&event); err != nil {
+				break // Connection closed or EOF reached
+			}
+			fmt.Printf("--> [SOCKET EVENT STREAM] Type: %-7s | Status: %-20s | Detail: %s\n",
+				event.EvenType, event.Status, event.Details)
+			// t.Logf("[HOST RECEIVED EVENT] Type: %s | Status: %s | Detail: %s", event.EvenType, event.Status, event.Details)
+		}
+	}()
+
 	// 3. Find & connect to event stream socket
 	streamConn, err := net.Dial("unix", os.Getenv("STREAM_SOCKET_PATH"))
 	if err != nil {
@@ -221,7 +306,17 @@ func RunnerAgent() {
 		cmd.Stderr = stderr
 
 		if err := cmd.Run(); err != nil {
-			log.Fatalf("Compilation phase failed: %v", err)
+			// stream events
+			eventStatus := utils.AgentEventSpec{
+				EvenType:     "ERROR",
+				Status:       CE,
+				SubmissionID: execSpec.SubmissionID,
+				Details:      err.Error(),
+			}
+			if err := streamEnconder.Encode(eventStatus); err != nil {
+				log.Printf("Failed to write to event stream pipeline: %v", err)
+				return
+			}
 		}
 	}
 
@@ -250,7 +345,7 @@ func RunnerAgent() {
 			break
 		}
 
-		// continue unless HaltOnFirstError is True & no major errors (OLE IE)
+		// continue unless HaltOnFirstError is True & no major errors (OLE IE RE)
 		if execSpec.HaltOnFirstError && eventStatus.EvenType == "ERROR" {
 			break
 		}

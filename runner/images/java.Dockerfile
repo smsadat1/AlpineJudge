@@ -20,6 +20,6 @@ COPY --from=jdk21 /opt/java/openjdk /usr/lib/jvm/java-21
 
 WORKDIR /workspace
 
-COPY --chmod=755 ajagent/ajagent /usr/bin/ajagent
+COPY --chmod=755 ../ajagent/ajagent /usr/bin/ajagent
 
 ENTRYPOINT [ "/usr/bin/ajagent" ]
