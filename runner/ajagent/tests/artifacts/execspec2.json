@@ -1,0 +1,25 @@
+{
+    
+    "submission_id": "subm-001",
+
+    "log_limit_kb": 4096,
+    "timeout_sec": 5,
+
+    "halt_on_first_error": false,
+
+    "testset_path": "artifacts/ts001",
+
+    "compile_args": [
+        "/usr/bin/g++",
+        "-std=c++20",
+        "-Wall",
+        "-Wextra",
+        "lol",
+        "artifacts/main",
+        "artifacts/main1.cpp"
+    ],
+
+    "run_args": [
+        "./artifacts/main"
+    ]
+}

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"local/runner/utils"
 	"log"
 	"net"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"utils"
 
 	"github.com/joho/godotenv"
 )
@@ -89,7 +89,7 @@ func signalHandler(err error) (status string, details string, isSignal bool) {
 
 }
 
-func runTestCase(
+func RunTestCase(
 	spec utils.AgentExecSpec, inputPath string, expectedPath string,
 ) utils.AgentEventSpec {
 
@@ -103,10 +103,9 @@ func runTestCase(
 	stdin, err := os.Open(inputPath)
 	if err != nil {
 		return utils.AgentEventSpec{
-			EvenType:     "ERROR",
-			Status:       IE,
-			SubmissionID: spec.SubmissionID,
-			Details:      err.Error(),
+			EvenType: "ERROR",
+			Status:   IE,
+			Details:  err.Error(),
 		}
 	}
 	defer stdin.Close()
@@ -114,19 +113,17 @@ func runTestCase(
 	expected, err := os.ReadFile(expectedPath)
 	if err != nil {
 		return utils.AgentEventSpec{
-			EvenType:     "ERROR",
-			Status:       IE,
-			SubmissionID: spec.SubmissionID,
-			Details:      err.Error(),
+			EvenType: "ERROR",
+			Status:   IE,
+			Details:  err.Error(),
 		}
 	}
 
 	if len(spec.RunArgs) == 0 {
 		return utils.AgentEventSpec{
-			EvenType:     "ERROR",
-			Status:       IE,
-			SubmissionID: spec.SubmissionID,
-			Details:      "Missing execution arguments in run specifications",
+			EvenType: "ERROR",
+			Status:   IE,
+			Details:  "Missing execution arguments in run specifications",
 		}
 	}
 
@@ -141,10 +138,9 @@ func runTestCase(
 
 	if err := cmd.Start(); err != nil {
 		return utils.AgentEventSpec{
-			EvenType:     "ERROR",
-			Status:       IE,
-			SubmissionID: spec.SubmissionID,
-			Details:      err.Error(),
+			EvenType: "ERROR",
+			Status:   IE,
+			Details:  err.Error(),
 		}
 	}
 
@@ -169,19 +165,17 @@ func runTestCase(
 			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		}
 		return utils.AgentEventSpec{
-			EvenType:     "ERROR",
-			Status:       TLE,
-			SubmissionID: spec.SubmissionID,
-			Details:      "Process exceeded strict execution runtime limitations",
+			EvenType: "ERROR",
+			Status:   TLE,
+			Details:  "Process exceeded strict execution runtime limitations",
 		}
 	case runErr := <-done:
 		// First priority: check output buffer cap
 		if stdout.LimitReached() {
 			return utils.AgentEventSpec{
-				EvenType:     "ERROR",
-				Status:       OLE,
-				SubmissionID: spec.SubmissionID,
-				Details:      "Output limit exceeded: program produced too much output",
+				EvenType: "ERROR",
+				Status:   OLE,
+				Details:  "Output limit exceeded: program produced too much output",
 			}
 		}
 
@@ -190,19 +184,17 @@ func runTestCase(
 			status, details, signal := signalHandler(runErr)
 			if signal {
 				return utils.AgentEventSpec{
-					EvenType:     "ERROR",
-					Status:       status,
-					SubmissionID: spec.SubmissionID,
-					Details:      details,
+					EvenType: "ERROR",
+					Status:   status,
+					Details:  details,
 				}
 			}
 
 			// Fallback for manual non-zero exits (e.g. exit(1) or return 1 from main)
 			return utils.AgentEventSpec{
-				EvenType:     "ERROR",
-				Status:       RE, // Runtime errors (like segmentation faults  or borken pipes)
-				SubmissionID: spec.SubmissionID,
-				Details:      fmt.Sprintf("Runtime Exception: %v | Stderr: %s", runErr, stderr.buf.String()),
+				EvenType: "ERROR",
+				Status:   RE, // Runtime errors (like segmentation faults  or borken pipes)
+				Details:  fmt.Sprintf("Runtime Exception: %v | Stderr: %s", runErr, stderr.buf.String()),
 			}
 		}
 	}
@@ -213,18 +205,16 @@ func runTestCase(
 
 	if actualOut != wantedOut {
 		return utils.AgentEventSpec{
-			EvenType:     "ACCEPT",
-			Status:       WA,
-			SubmissionID: spec.SubmissionID,
-			Details:      "Output mismatch against expected testcase answers",
+			EvenType: "ACCEPT",
+			Status:   WA,
+			Details:  "Output mismatch against expected testcase answers",
 		}
 	}
 
 	return utils.AgentEventSpec{
-		EvenType:     "ACCEPT",
-		Status:       OK,
-		SubmissionID: spec.SubmissionID,
-		Details:      "",
+		EvenType: "ACCEPT",
+		Status:   OK,
+		Details:  "",
 	}
 }
 
@@ -249,7 +239,6 @@ func RunnerAgent() {
 		// stream events
 		eventStatus.EvenType = "FALLBACK"
 		eventStatus.Status = PE
-		eventStatus.SubmissionID = ""
 		eventStatus.Details = "No .env file found, reading from direct system environment variables"
 		if err := streamEnconder.Encode(eventStatus); err != nil {
 			log.Printf("Failed to write to event stream pipeline: %v", err)
@@ -263,7 +252,6 @@ func RunnerAgent() {
 		// stream events
 		eventStatus.EvenType = "ERROR"
 		eventStatus.Status = IE
-		eventStatus.SubmissionID = ""
 		eventStatus.Details = "Failed to load execspec: " + err.Error() + "\n"
 		if err := streamEnconder.Encode(eventStatus); err != nil {
 			log.Printf("Failed to write to event stream pipeline: %v", err)
@@ -297,7 +285,6 @@ func RunnerAgent() {
 			// stream events
 			eventStatus.EvenType = "ERROR"
 			eventStatus.Status = CE
-			eventStatus.SubmissionID = ""
 			eventStatus.Details = err.Error()
 			if err := streamEnconder.Encode(eventStatus); err != nil {
 				log.Printf("Failed to write to event stream pipeline: %v", err)
@@ -324,7 +311,7 @@ func RunnerAgent() {
 		inputPath := filepath.Join(testcaseDir, "in.txt")
 		expectedPath := filepath.Join(testcaseDir, "out.txt")
 
-		eventStatus := runTestCase(execSpec, inputPath, expectedPath)
+		eventStatus := RunTestCase(execSpec, inputPath, expectedPath)
 
 		// stream events
 		if err := streamEnconder.Encode(eventStatus); err != nil {
@@ -337,8 +324,4 @@ func RunnerAgent() {
 			break
 		}
 	}
-}
-
-func main() {
-	RunnerAgent()
 }
