@@ -3,6 +3,9 @@ go 1.26.3
 use (
 	./dispatcher
 	./runner
+	./runner/utils
 	./shared
 	./tests
+	./tests/unit
+	./tests/integration
 )
