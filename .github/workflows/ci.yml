@@ -9,25 +9,9 @@ on:
 jobs:
   test: 
     runs-on: ubuntu-latest
-        
-    services:
-      rabbitmq:
-        image: rabbitmq:3-management
-        ports:
-          - 5672:5672
-          - 15672:15672
-          
-        options: >-
-          --health-cmd "rabbitmq-diagnostics -q ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
-    
+            
     strategy:
       fail-fast: false
-      # matrix:
-      #   module: ['shared', 'dispatcher', 'runner']
-      #   subsystem: ['tests']
 
     steps:
       - name: Checkout Code
@@ -38,40 +22,14 @@ jobs:
         with:
           go-version: '1.26'
         
-      - name: Start MinIO
-        run: |
-          docker run -d \
-            --name minio \
-            -p 9000:9000 \
-            -e MINIO_ROOT_USER=minioadmin \
-            -e MINIO_ROOT_PASSWORD=minioadminpassword \
-            minio/minio:RELEASE.2023-08-29T23-07-35Z \
-            server /data
-        
-      - name: Wait for MinIO
-        run: |
-          until curl -f http://localhost:9000/minio/health/live; do
-            sleep 2
-          done
-        
-      - name: Run Shared Module Tests
-        working-directory: shared
-        run: |
-          go mod tidy
-          go test -v ./...
+      - name: Run Unit Tests
+        working-directory: tests/unit
+        run: go test -v ./...
 
-      - name: Run Dispatcher Module Tests
-        working-directory: dispatcher
-        run: |
-          go mod tidy
-          go test -v ./...
-
-      - name: Run Runner Module Tests
-        working-directory: runner
-        run: |
-          go mod tidy
-          go test -v ./...
+      - name: Run Integration Tests
+        working-directory: tests/integration
+        run: go test -v ./...
 
       - name: Run E2E Tests
-        working-directory: tests
-        run: bash verify.sh
+        working-directory: tests/e2e
+        run: bash rune2e.sh
