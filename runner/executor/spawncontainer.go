@@ -6,11 +6,10 @@ import (
 	"log"
 	"os"
 	"shared"
+	"utils"
 
 	containerd "github.com/containerd/containerd"
 	oci "github.com/containerd/containerd/oci"
-
-	"local/runner/utils"
 )
 
 // manages entire container lifecycle
@@ -54,7 +53,7 @@ func ExecSubmission(
 	log.Printf("Successfully initiated container with ID %s and snapshot with ID %v", container.ID(), snapshotID)
 
 	// 4. Manage the running continer, run tests & destroy before exit
-	result := execSubm(ctx, container, rules, jobspec, rmqm)
+	result := ExecSubm(ctx, container, rules, jobspec, rmqm, s3m)
 
 	return result, nil
 }

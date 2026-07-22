@@ -2,8 +2,8 @@ package executor
 
 import (
 	"context"
+	"utils"
 
-	"local/runner/utils"
 	"shared"
 )
 
@@ -137,8 +137,8 @@ func PrepareExecrules(
 	HostTestFilePath = hostTestFileDir
 
 	if testMode {
-		HostSrcFilePath = "artifacts/main.cc"
-		HostTestFilePath = "artifacts/ts001"
+		HostSrcFilePath = "../artifacts/main.cc"
+		HostTestFilePath = "../artifacts/ts001"
 	}
 
 	err := downloadFileS3(

@@ -1,136 +1,185 @@
 package executor
 
 import (
+	"bufio"
+	"bytes"
 	"context"
-	"io"
+	"fmt"
 	"log"
+	"net"
+	"os"
 	"shared"
-	"sync"
 	"syscall"
 	"time"
+	"utils"
 
 	containerd "github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/errdefs"
 	amqp "github.com/rabbitmq/amqp091-go"
-
-	"local/runner/utils"
 )
 
-func execSubm(
-	ctx context.Context, container containerd.Container, rules utils.ExecRules, jobspec shared.JobSpec, rmqm shared.RMQManager,
+func ExecSubm(
+	ctx context.Context,
+	container containerd.Container,
+	rules utils.ExecRules,
+	jobspec shared.JobSpec,
+	rmqm shared.RMQManager,
+	s3m shared.S3Manager,
 ) utils.ResultSpec {
 
 	result := utils.ResultSpec{
 		SubmissionId: jobspec.SubmissionID,
 		Language:     jobspec.Language,
 		Version:      jobspec.Version,
-		Interval:     "0",
+		Interval:     0,
 		Status:       "Pending",
+		Details:      "",
 	}
-	// synchronous unix pipe for read & write
-	stdoutReader, stdoutWriter := io.Pipe()
-	stderrReader, stderrWriter := io.Pipe()
 
-	localQueue := make(chan amqp.Publishing, 100)
+	s3keyPrefix := "submissions/" + jobspec.SubmissionID + "/"
+	var stdoutWriter bytes.Buffer
+	var stderrWrite bytes.Buffer
 
+	// Setup unix socket
+	_ = os.Remove(rules.EventSocket) // cleanup stale socket
+	listener, err := net.Listen("unix", rules.EventSocket)
+	if err != nil {
+		log.Fatalf("Failed to create socket listener: %v", err)
+	}
+	defer func() {
+		_ = listener.Close()
+		_ = os.RemoveAll(rules.EventSocket)
+	}()
+
+	// Context to gracefully shut down socket listener worker when function returns
+	sockCtx, sockCancel := context.WithCancel(ctx)
+	defer sockCancel()
+
+	// Goroutine: Accepts incoming socket connections from container & publishes to RabbitMQ in real time
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				select {
+				case <-sockCtx.Done():
+					return // Normal exit when task finishes
+				default:
+					log.Printf("Socket accept error: %v", err)
+					return
+				}
+			}
+
+			// Handle stream from this connection
+			go func(c net.Conn) {
+				defer c.Close()
+
+				scanner := bufio.NewScanner(c)
+				if err := scanner.Err(); err != nil {
+					log.Printf("Failed to scan streamed data: %v", err)
+					return
+				}
+				for scanner.Scan() {
+					eventPayload := scanner.Bytes()
+
+					// publish event payload directly to RMQ in real time
+					msg := amqp.Publishing{
+						ContentType:  "application/json",
+						DeliveryMode: amqp.Persistent,
+						Timestamp:    time.Now(),
+						Body:         eventPayload,
+					}
+
+					if err := rmqm.Publish(sockCtx, rules.EventQueueName, msg); err != nil {
+						log.Printf("Failed to stream event to RMQ: %v", err)
+					}
+				}
+
+			}(conn)
+		}
+	}()
+
+	// start container task
 	task, err := container.NewTask(
 		ctx,
-		cio.NewCreator(cio.WithStreams(nil, stdoutWriter, stderrWriter)),
+		cio.NewCreator(cio.WithStreams(nil, &stdoutWriter, &stderrWrite)),
 	)
+
 	if err != nil {
-		stderrWriter.Close()
-		stdoutWriter.Close()
+
+		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
+		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
+
+		result.Interval = 0
 		result.Status = utils.VerdictIE
+		result.Details = "Failed to create container task"
 		return result
 	}
 
 	defer task.Delete(ctx)
 
-	// get exit status channel
-	statusC, err := task.Wait(ctx)
+	// obtain wait channel before task.Start()
+	statusCode, err := task.Wait(ctx)
 	if err != nil {
-		stderrWriter.Close()
-		stdoutWriter.Close()
-		result.Status = utils.VerdictCE
-		return result
-	}
 
-	// start task execution
-	if err := task.Start(ctx); err != nil {
-		stderrWriter.Close()
-		stdoutWriter.Close()
+		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
+		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
+
+		result.Interval = 0
 		result.Status = utils.VerdictIE
+		result.Details = "Failed to obtain wait status channel"
 		return result
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	start := time.Now()
 
-	go func() {
-		defer wg.Done()
-		select {
-		case msg, ok := <-localQueue:
-			if ok {
-				utils.StreamContainerLogsToRMQ(ctx, rules.OutStreamQueueName, stdoutReader, rmqm, msg)
-			}
-		case <-ctx.Done():
-		}
-	}()
+	if err := task.Start(ctx); err != nil {
 
-	go func() {
-		defer wg.Done()
-		select {
-		case msg, ok := <-localQueue:
-			if ok {
-				utils.StreamContainerLogsToRMQ(ctx, rules.ErrStreamQueueName, stderrReader, rmqm, msg)
-			}
-		case <-ctx.Done():
-		}
-	}()
+		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
+		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
 
+		result.Interval = 0
+		result.Status = utils.VerdictIE
+		result.Details = "Failed to start container task"
+		return result
+	}
+
+	// Handle timeouts & exit
 	timeoutDuration := time.Duration(rules.Timeoutsec)*time.Second + 5 // extra 5 seconds at container level
 	ctxTimeout, cancel := context.WithTimeout(ctx, timeoutDuration)
 	defer cancel()
 
-	// dynamic wait block
 	var status containerd.ExitStatus
 	select {
-	case status = <-statusC:
+	case status = <-statusCode:
 
-		log.Println("Task completed.")
+		// Process completed naturally within timeout limit
+		elapsedMS := time.Since(start).Milliseconds()
+		result.Interval = uint64(elapsedMS)
+
 		if status.Error() != nil {
 			result.Status = utils.VerdictIE
-			return result
+			result.Details = "Task exited abnormally"
+		} else if status.ExitCode() != 0 {
+			result.Status = utils.VerdictIE
+			result.Details = fmt.Sprintf("Task exited with non-zero exit code: %d", status.ExitCode())
+		} else {
+			result.Status = utils.VerdictAC
+			result.Details = "Task executed successfully"
 		}
 
 	case <-ctxTimeout.Done():
-		// force kill , just in case
-		log.Printf("Task exceeded set timeout %v\nStopping task...\n", rules.Timeoutsec)
-		if err := task.Kill(ctx, syscall.SIGTERM); err != nil {
-			if errdefs.IsNotFound(err) {
-				log.Println("Task finished right as timeout hit; ignoring 'not found' error.")
-			} else {
-				// genuine error
-				result.Status = utils.VerdictTLE
-				return result
-			}
-		}
+		// TLE
+		elapsedMS := time.Since(start).Milliseconds()
+		result.Interval = uint64(elapsedMS)
+		result.Status = utils.VerdictTLE
+		result.Details = fmt.Sprintf("Task exceeded time limit of %d seconds", rules.Timeoutsec)
+
+		log.Print("Task timedout. Sending SIGKILL to container...")
+		_ = task.Kill(ctx, syscall.SIGKILL)
 	}
 
-	stderrWriter.Close()
-	stdoutWriter.Close()
+	s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
+	s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
 
-	// wait for  logging goroutines to fully finish scanning and flush remaining logs
-	wg.Wait()
-
-	// block till exit status
-	if status.ExitCode() != 0 {
-		result.Status = utils.VerdictWA
-		return result
-	}
-
-	log.Printf("Container task exited with status code %v", status.ExitCode())
-	result.Status = utils.VerdictAC
 	return result
 }

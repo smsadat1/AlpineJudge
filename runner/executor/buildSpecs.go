@@ -3,8 +3,8 @@ package executor
 
 import (
 	"encoding/json"
-	"local/runner/utils"
 	"log"
+	"utils"
 
 	oci "github.com/containerd/containerd/oci"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -42,8 +42,8 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 			},
 			{
 				// unix socker for agent to stream execution state
-				Source:      "/tmp/alpinejudge/" + rules.RunnerID + "/agentstream.sock",
-				Destination: "/workspace/agentstream.sock",
+				Source:      rules.EventSocket,
+				Destination: "/workspace/agent.sock",
 				Type:        "bind",
 				Options:     []string{"bind", "rw"},
 			},
