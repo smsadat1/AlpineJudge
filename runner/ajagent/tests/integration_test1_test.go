@@ -12,9 +12,9 @@ import (
 
 func Test_RunnerAgent_Integration_Ok(t *testing.T) {
 
-	t.Setenv("STREAM_SOCKET_PATH", "../artifacts/agent.sock")
-	t.Setenv("CONFIG_PATH", "../artifacts/execspec1.json")
-	t.Setenv("TESTSET_PATH", "../artifacts/ts001")
+	t.Setenv("STREAM_SOCKET_PATH", "artifacts/agent.sock")
+	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
+	t.Setenv("TESTSET_PATH", "artifacts/ts001")
 
 	th := NewTestHarness(t)
 
