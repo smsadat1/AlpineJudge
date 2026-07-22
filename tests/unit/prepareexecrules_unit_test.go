@@ -1,9 +1,10 @@
-package tests
+package unit_test
 
 import (
 	"context"
 	"dispatcher"
 	"local/runner/executor"
+	"local/testrunner/factory"
 	"os"
 	"shared"
 	"slices"
@@ -17,11 +18,8 @@ func Test_PrepareExecrules(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	t.Setenv("TEST_S3_URL", "http://localhost:9000")
-	t.Setenv("TEST_S3_USERNAME", "minioadmin")
-	t.Setenv("TEST_S3_PASSWORD", "minioadminpassword")
-	t.Setenv("TEST_S3_BUCKET_NAME", "ajbucket-test-preparer")
-	t.Setenv("TEST_S3_REGION_NAME", "us-east-1")
+	tf := factory.NewTestFactory(t)
+	tf.StartTestMinioS3(t, ctx)
 
 	testSubmissionID := "s234"
 	testTestsetID := "ts001"
@@ -29,33 +27,24 @@ func Test_PrepareExecrules(t *testing.T) {
 	testSrcCodeS3key := "/submissions/" + testSubmissionID + "/main.cc"
 	testTestsetS3key := "/testsets/" + testTestsetID + "/" + testTestsetVer + "/"
 
-	if err := dispatcher.LoadConfigs("../artifacts/config.example.yaml"); err != nil {
+	if err := dispatcher.LoadConfigs("../artifacts/runner.config.example.yaml"); err != nil {
 		t.Fatal(err)
 	}
 
-	s3m, err := shared.InitS3Manager(
-		ctx,
-		os.Getenv("TEST_S3_BUCKET_NAME"),
-		os.Getenv("TEST_S3_REGION_NAME"),
-		os.Getenv("TEST_S3_USERNAME"),
-		os.Getenv("TEST_S3_PASSWORD"),
-		os.Getenv("TEST_S3_URL"),
-	)
-
-	if err := utils.LoadRunnerConfigs("../artifacts/config.example.yaml"); err != nil {
+	if err := utils.LoadRunnerConfigs("../artifacts/runner.config.example.yaml"); err != nil {
 		t.Fatal(err)
 	}
 
-	data, err := os.Open("artifacts/main.cc")
+	data, err := os.Open("../artifacts/main.cpp")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// upload artifacts first for test
-	s3m.UploadFileToS3(ctx, testSrcCodeS3key, data)
-	s3m.UploadDirToS3(ctx, testTestsetS3key, "../artifacts/ts001")
+	tf.S3m.UploadFileToS3(ctx, testSrcCodeS3key, data)
+	tf.S3m.UploadDirToS3(ctx, testTestsetS3key, "../artifacts/ts001")
 
-	_, _ = s3m.CreateABucket(ctx, os.Getenv("TEST_S3_BUCKET_NAME"))
+	_, _ = tf.S3m.CreateABucket(ctx, os.Getenv("TEST_S3_BUCKET_NAME"))
 
 	testJobSpec := shared.JobSpec{
 		Language:       "cc",
@@ -68,9 +57,9 @@ func Test_PrepareExecrules(t *testing.T) {
 		TestsetVersion: testTestsetVer,
 	}
 
-	executor.HostSrcFilePath = "artifacts/main.cc"
-	executor.HostTestFilePath = "artifacts/ts001"
-	err, execrules := executor.PrepareExecrules(ctx, *s3m, testJobSpec, true)
+	executor.HostSrcFilePath = "../artifacts/main.cc"
+	executor.HostTestFilePath = "../artifacts/ts001"
+	err, execrules := executor.PrepareExecrules(ctx, *tf.S3m, testJobSpec, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,4 +115,5 @@ func Test_PrepareExecrules(t *testing.T) {
 		t.Errorf("Expected %d, got %d", execrules.PidLimit, int64(utils.RunCfg.Limits.PIDLimit))
 	}
 
+	// ajagent.RunnerAgent()
 }

@@ -1,4 +1,4 @@
-package tests
+package unit_test
 
 import (
 	"local/runner/scheduler"

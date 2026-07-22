@@ -1,4 +1,4 @@
-package tests
+package unit_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ func Test_LoadRunnerConfigs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if utils.RunCfg.RunnerID != "runner-001" ||
+	if utils.RunCfg.RunnerID != "test-runner" ||
 		utils.RunCfg.Images["c"] != "ghcr.io/smsadat1/ajgcc:v0.1.0" ||
 		utils.RunCfg.Images["cc"] != "ghcr.io/smsadat1/ajgcc:v0.1.0" ||
 		utils.RunCfg.Images["cpp"] != "ghcr.io/smsadat1/ajgcc:v0.1.0" ||

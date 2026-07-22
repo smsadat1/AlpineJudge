@@ -1,4 +1,4 @@
-package tests
+package unit_test
 
 import (
 	"encoding/json"
@@ -10,38 +10,8 @@ import (
 )
 
 func Test_Build_agentExecSpec(t *testing.T) {
-
-	// var testEnv map[string]string
-	// testEnv = make(map[string]string)
-	// testEnv["CONFIG_PATH"] = "/workspace/execspec.json"
-
 	tr := repository.NewTestRepository(t)
 	testRules := tr.TestExecRules
-
-	// testRules := utils.ExecRules{
-	// 	RunnerID:    "runner-001",
-	// 	ContainerID: "container-123",
-	// 	Image:       "ghcr.io/smsadat1/ajgo:v0.1.0",
-	// 	CompileArgs: []string{"/usr/local/go1.26/bin/go"},
-	// 	RunArgs:     []string{"/usr/local/go1.26/bin/go", "run", "main.go"},
-	// 	TestID:      "ts123",
-
-	// 	CodePathHost:         "/tmp/alpinejudge/runner-001/main.go",
-	// 	CodePathContainer:    "/workspace/main.go",
-	// 	TestsetPathHost:      "/tmp/alpinejudge/runner-001/" + "ts123/",
-	// 	TestsetPathContainer: "/workspace/" + "ts123/",
-	// 	Env:                  testEnv,
-	// 	OutStreamQueueName:   "IdkWhatToName",
-	// 	ErrStreamQueueName:   "IdkWhatToName",
-
-	// 	MemoryLimitMB:  1024,
-	// 	CpuQuota:       2,
-	// 	PidLimit:       128,
-	// 	NoNewPrivilege: true,
-	// 	ReadOnlyRootfs: true,
-	// 	LogLimitKB:     234,
-	// 	Timeoutsec:     300,
-	// }
 
 	err, data := executor.Build_agentExecSpec(testRules)
 	if err != nil {
