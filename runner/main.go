@@ -11,11 +11,11 @@ import (
 	"context"
 	"local/runner/executor"
 	"local/runner/scheduler"
-	"local/runner/utils"
 	"log"
 	"os"
 	"shared"
 	"time"
+	"utils"
 
 	containerd "github.com/containerd/containerd"
 	namespaces "github.com/containerd/containerd/v2/pkg/namespaces"

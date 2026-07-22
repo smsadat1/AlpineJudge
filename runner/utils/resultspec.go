@@ -19,6 +19,7 @@ type ResultSpec struct {
 	SubmissionId string  `json:"submission_id"`
 	Language     string  `json:"language"`
 	Version      string  `json:"version"`
-	Interval     string  `json:"interval"`
+	Interval     uint64  `json:"interval"`
 	Status       Verdict `json:"status"`
+	Details      string  `json:"details"`
 }

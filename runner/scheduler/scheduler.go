@@ -3,7 +3,7 @@ package scheduler
 
 import (
 	"cmp"
-	"local/runner/utils"
+	"utils"
 )
 
 const OVER_SUB_FACTOR = 2

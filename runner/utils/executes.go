@@ -26,8 +26,8 @@ type ExecRules struct {
 	TestsetPathHost      string            // oci | ok
 	TestsetPathContainer string            // oci | ok
 	Env                  map[string]string // only "CONFIG_PATH=/workspace/execspec.json" | ok
-	OutStreamQueueName   string
-	ErrStreamQueueName   string
+	EventSocket          string
+	EventQueueName       string
 
 	// rules
 	MemoryLimitMB  uint64  // oci | ok
@@ -56,11 +56,11 @@ type AgentExecSpec struct {
 	RunArgs     []string `json:"run_args"`
 }
 
+// SSE spec
 type AgentEventSpec struct {
-	EvenType     string
-	Status       string
-	SubmissionID string
-	Details      string
+	EvenType string
+	Status   string
+	Details  string
 }
 
 // stream real time logs from container

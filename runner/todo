@@ -1,10 +1,11 @@
 Tests to make: 
 
--5 Test_SystemMonitor
--4 Test_RADScheduler 
--3 Test_LoadRunnerConfigs
--2 Test_Build_ociSpecOpts
--1 Test_Build_agentExecSpec
- 0 Test_PrepareExecrules
- 1 Test_AjAgent
- 2 Test_ExecSubmission
+-7 Test_SystemMonitor
+-6 Test_RADScheduler 
+-5 Test_LoadRunnerConfigs
+-4 Test_Build_ociSpecOpts
+-3 Test_Build_agentExecSpec
+-2 Test_PrepareExecrules
+-1 Test_AjAgent
+ 0 Test_ExecSubmission
+ 1 Test_E2E_Runner

@@ -1,10 +1,11 @@
 {
+    
     "submission_id": "subm-001",
 
     "log_limit_kb": 4096,
     "timeout_sec": 5,
 
-    "has_compile": true,
+    "halt_on_first_error": true,
 
     "testset_path": "/workspace/ts001",
 

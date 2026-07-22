@@ -5,13 +5,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"local/runner/utils"
 	"log"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+	"utils"
 )
 
 func getCPUSample() (utils.CPUSample, error) {
