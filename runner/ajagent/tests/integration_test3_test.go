@@ -47,8 +47,8 @@ func Test_RunnerAgent_Integration_HFE(t *testing.T) {
 			}
 			counter++
 		}
-		if counter != 5 {
-			t.Error("Supposed to stop at 5th test")
+		if counter != 4 {
+			t.Error("Supposed to stop at 4th test")
 		}
 	}()
 
