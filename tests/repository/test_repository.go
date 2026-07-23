@@ -109,12 +109,12 @@ func (tr *TestRepository) NewTestOCISpecOpts(t *testing.T, testRules utils.ExecR
 		oci.WithMounts([]specs.Mount{
 
 			// DEBUG only
-			{
-				Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
-				Destination: "/usr/bin/ajagent",
-				Type:        "bind",
-				Options:     []string{"bind", "ro"},
-			},
+			// {
+			// 	Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
+			// 	Destination: "/usr/bin/ajagent",
+			// 	Type:        "bind",
+			// 	Options:     []string{"bind", "ro"},
+			// },
 
 			{
 				// writable /tmp for temp objects
