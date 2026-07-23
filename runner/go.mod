@@ -6,7 +6,6 @@ require (
 	github.com/containerd/containerd v1.7.33
 	github.com/containerd/containerd/v2 v2.3.3
 	github.com/rabbitmq/amqp091-go v1.12.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
