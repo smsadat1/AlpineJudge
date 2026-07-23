@@ -7,12 +7,7 @@ import (
 	"os"
 	"shared"
 	"testing"
-	"time"
 
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/platforms"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/modules/rabbitmq"
@@ -71,23 +66,13 @@ func (tf *TestFactory) StartTestRMQ(t *testing.T, ctx context.Context) {
 
 	t.Helper()
 
-	declareQueueCmd := testcontainers.NewRawCommand([]string{
-		"rabbitmqadmin",
-		"declare",
-		"queue",
-		fmt.Sprintf("name=%s", tf.RmqQueueName),
-		"durable=true",
-	})
-
 	rmqContainer, err := rabbitmq.Run(
 		ctx,
 		"rabbitmq:3.12.11-management-alpine",
 		rabbitmq.WithAdminUsername("guest"),
 		rabbitmq.WithAdminPassword("guest"),
 		testcontainers.WithExposedPorts("5672"),
-		testcontainers.WithAfterReadyCommand(declareQueueCmd),
 	)
-
 	if err != nil {
 		t.Fatalf("failed to start container: %s", err)
 	}
@@ -162,49 +147,9 @@ func (tf *TestFactory) StartTestMinioS3(t *testing.T, ctx context.Context) {
 	}
 }
 
-func (tf *TestFactory) StartRawContainer(t *testing.T, ctx context.Context) containerd.Container {
-	ctx = namespaces.WithNamespace(ctx, "test")
-
-	client, err := containerd.New("/run/containerd/containerd.sock")
-	if err != nil {
-		t.Fatalf("failed to connect to containerd: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = client.Close()
-	})
-
-	targetPlatform := platforms.DefaultString()
-	image, err := client.Pull(
-		ctx,
-		tf.Image,
-		containerd.WithPullUnpack,
-		containerd.WithPullSnapshotter("native"),
-		containerd.WithPlatform(targetPlatform),
-	)
-	if err != nil {
-		t.Fatalf("failed to pull image %s: %v", tf.Image, err)
-	}
-
-	// Dynamic unique IDs to prevent state collision on disk
-	containerID := fmt.Sprintf("test-runner-%d", time.Now().UnixNano())
-	snapshotID := containerID + "-snapshot"
-
-	container, err := client.NewContainer(
-		ctx,
-		containerID,
-		// ORDER MATTERS: Set native snapshotter BEFORE telling it to build the snapshot!
-		containerd.WithSnapshotter("native"),
-		containerd.WithNewSnapshot(snapshotID, image),
-		containerd.WithNewSpec(oci.WithImageConfig(image)),
-	)
-	if err != nil {
-		t.Fatalf("failed to create container: %v", err)
-	}
-
-	// Cleanup container and its snapshot after test completes
-	t.Cleanup(func() {
-		_ = container.Delete(ctx, containerd.WithSnapshotCleanup)
-	})
-
-	return container
-}
+// func (tf *TestFactory) StartRawContainer(
+// 	t *testing.T,
+// 	ctx context.Context,
+// 	tr repository.TestRepository,
+// ) {
+// }
