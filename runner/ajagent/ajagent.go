@@ -15,8 +15,6 @@ import (
 	"syscall"
 	"time"
 	"utils"
-
-	"github.com/joho/godotenv"
 )
 
 var (
@@ -90,7 +88,7 @@ func signalHandler(err error) (status string, details string, isSignal bool) {
 }
 
 func RunTestCase(
-	spec utils.AgentExecSpec, inputPath string, expectedPath string,
+	spec utils.AgentExecSpec, inputPath string, expectedPath string, testCount int,
 ) utils.AgentEventSpec {
 
 	// per testcase context & timeout
@@ -213,8 +211,8 @@ func RunTestCase(
 
 	return utils.AgentEventSpec{
 		EvenType: "ACCEPT",
-		Status:   OK,
-		Details:  "",
+		Status:   OK + " " + fmt.Sprint(testCount),
+		Details:  "Output matched expectation",
 	}
 }
 
@@ -234,17 +232,17 @@ func RunnerAgent() {
 	streamEnconder := json.NewEncoder(streamConn)
 
 	// 2. Load env vars
-	if err := godotenv.Load(); err != nil {
-		log.Println()
-		// stream events
-		eventStatus.EvenType = "FALLBACK"
-		eventStatus.Status = PE
-		eventStatus.Details = "No .env file found, reading from direct system environment variables"
-		if err := streamEnconder.Encode(eventStatus); err != nil {
-			log.Printf("Failed to write to event stream pipeline: %v", err)
-			return
-		}
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println()
+	// 	// stream events
+	// 	eventStatus.EvenType = "FALLBACK"
+	// 	eventStatus.Status = PE
+	// 	eventStatus.Details = "No .env file found, reading from direct system environment variables"
+	// 	if err := streamEnconder.Encode(eventStatus); err != nil {
+	// 		log.Printf("Failed to write to event stream pipeline: %v", err)
+	// 		return
+	// 	}
+	// }
 
 	// 2. Find & load /workspace/execspec.json to spec
 	jsonData, err := os.ReadFile(os.Getenv("CONFIG_PATH"))
@@ -285,7 +283,7 @@ func RunnerAgent() {
 			// stream events
 			eventStatus.EvenType = "ERROR"
 			eventStatus.Status = CE
-			eventStatus.Details = err.Error()
+			eventStatus.Details = "STDOUT: " + stdout.buf.String() + "STDERR: " + stderr.buf.String()
 			if err := streamEnconder.Encode(eventStatus); err != nil {
 				log.Printf("Failed to write to event stream pipeline: %v", err)
 				return
@@ -301,8 +299,9 @@ func RunnerAgent() {
 	}
 
 	// 8. Run the program & iterate over given testset
+	testCount := 0
 	for _, ts := range entries {
-
+		testCount++
 		if !ts.IsDir() {
 			continue
 		}
@@ -311,7 +310,7 @@ func RunnerAgent() {
 		inputPath := filepath.Join(testcaseDir, "in.txt")
 		expectedPath := filepath.Join(testcaseDir, "out.txt")
 
-		eventStatus := RunTestCase(execSpec, inputPath, expectedPath)
+		eventStatus := RunTestCase(execSpec, inputPath, expectedPath, testCount)
 
 		// stream events
 		if err := streamEnconder.Encode(eventStatus); err != nil {

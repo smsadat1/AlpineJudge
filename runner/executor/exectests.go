@@ -41,14 +41,14 @@ func ExecSubm(
 	var stderrWrite bytes.Buffer
 
 	// Setup unix socket
-	_ = os.Remove(rules.EventSocket) // cleanup stale socket
-	listener, err := net.Listen("unix", rules.EventSocket)
+	_ = os.Remove(rules.HostEventSocket) // cleanup stale socket
+	listener, err := net.Listen("unix", rules.HostEventSocket)
 	if err != nil {
 		log.Fatalf("Failed to create socket listener: %v", err)
 	}
 	defer func() {
 		_ = listener.Close()
-		_ = os.RemoveAll(rules.EventSocket)
+		_ = os.RemoveAll(rules.HostEventSocket)
 	}()
 
 	// Context to gracefully shut down socket listener worker when function returns
@@ -106,6 +106,8 @@ func ExecSubm(
 
 	if err != nil {
 
+		log.Printf("NewTask RPC error: %v", err)
+
 		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
 		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
 
@@ -121,6 +123,8 @@ func ExecSubm(
 	statusCode, err := task.Wait(ctx)
 	if err != nil {
 
+		log.Printf("NewTask RPC error: %v", err)
+
 		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
 		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
 
@@ -133,6 +137,8 @@ func ExecSubm(
 	start := time.Now()
 
 	if err := task.Start(ctx); err != nil {
+
+		log.Printf("NewTask RPC error: %v", err)
 
 		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
 		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
@@ -177,6 +183,10 @@ func ExecSubm(
 		log.Print("Task timedout. Sending SIGKILL to container...")
 		_ = task.Kill(ctx, syscall.SIGKILL)
 	}
+
+	// TODO: Fix stdout & stderr being empty issue
+	log.Printf(" Stdout output: %s", stdoutWriter.String())
+	log.Printf(" Stderr output: %s", stderrWrite.String())
 
 	s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
 	s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))

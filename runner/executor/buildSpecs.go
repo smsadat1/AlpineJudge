@@ -42,8 +42,8 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 			},
 			{
 				// unix socker for agent to stream execution state
-				Source:      rules.EventSocket,
-				Destination: "/workspace/agent.sock",
+				Source:      rules.HostEventSocket,
+				Destination: rules.ContainerEventSocket,
 				Type:        "bind",
 				Options:     []string{"bind", "rw"},
 			},

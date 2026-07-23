@@ -32,33 +32,3 @@ func getContainerImage(imageName string, client *containerd.Client, ctx context.
 
 	return image
 }
-
-// func startContainer(rules utils.ExecRules) error {
-// 	// init client and setup namespace
-// 	client, err := containerd.New("/run/containerd/containerd.sock")
-// 	if err != nil {
-// 		log.Printf("[nsrunner] Failed to create containerd: %v", err)
-// 		return err
-// 	}
-// 	defer client.Close()
-// 	ctx := namespaces.WithNamespace(context.Background(), "alpine_judge")
-
-// 	// spawn container
-// 	container, err := spawnContainer(ctx, client, rules)
-// 	if err != nil {
-// 		log.Printf("Failed to spawn container: %v", err)
-// 		return err
-// 	}
-
-// 	// delete container w/snapshot when main() exits
-// 	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
-
-// 	// create and manage container
-// 	err = createAndManageTask(container, ctx, rules)
-// 	if err != nil {
-// 		log.Printf("Container task management failed %v", err)
-// 		return err
-// 	}
-
-// 	return nil
-// }

@@ -73,6 +73,7 @@ func Test_runTestCase_IE_MissingRunArgs(t *testing.T) {
 	}
 
 	// 8. Run the program & iterate over given testset
+	testCount := 0
 	for _, ts := range entries {
 
 		if !ts.IsDir() {
@@ -83,7 +84,8 @@ func Test_runTestCase_IE_MissingRunArgs(t *testing.T) {
 		inputPath := filepath.Join(testcaseDir, "in.txt")
 		expectedPath := filepath.Join(testcaseDir, "out.txt")
 
-		eventStatus := ajagent.RunTestCase(testSpec, inputPath, expectedPath)
+		testCount++
+		eventStatus := ajagent.RunTestCase(testSpec, inputPath, expectedPath, testCount)
 
 		// stream events
 		if err := streamEnconder.Encode(eventStatus); err != nil {

@@ -118,6 +118,7 @@ func (th *TestHarness) run(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	testCount := 0
 	for _, ts := range entries {
 
 		if !ts.IsDir() {
@@ -128,7 +129,8 @@ func (th *TestHarness) run(t *testing.T) {
 		inputPath := filepath.Join(testcaseDir, "in.txt")
 		expectedPath := filepath.Join(testcaseDir, "out.txt")
 
-		eventStatus := ajagent.RunTestCase(th.TestSpec, inputPath, expectedPath)
+		testCount++
+		eventStatus := ajagent.RunTestCase(th.TestSpec, inputPath, expectedPath, testCount)
 
 		// stream events
 		if err := th.streamEnconder.Encode(eventStatus); err != nil {

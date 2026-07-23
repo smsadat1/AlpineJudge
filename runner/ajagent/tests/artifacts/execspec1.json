@@ -16,7 +16,7 @@
         "-Wextra",
         "-o",
         "artifacts/main",
-        "artifacts/main1.cpp"
+        "artifacts/main.cpp"
     ],
 
     "run_args": [
