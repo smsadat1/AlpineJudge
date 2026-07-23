@@ -1,10 +1,10 @@
 package unit_test
 
 import (
+	"assert"
 	"encoding/json"
 	"local/runner/executor"
 	"local/testrunner/repository"
-	"slices"
 	"testing"
 	"utils"
 )
@@ -23,28 +23,10 @@ func Test_Build_agentExecSpec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Assert using clean struct properties
-	if agentConfig.SubmissionID != testRules.SubmissionID {
-		t.Errorf("Expected %s, got %s", testRules.SubmissionID, agentConfig.SubmissionID)
-	}
-
-	if agentConfig.TimeoutSec != testRules.Timeoutsec {
-		t.Errorf("Expected %d, got %d", testRules.Timeoutsec, agentConfig.TimeoutSec)
-	}
-
-	if agentConfig.LogLimitKB != testRules.LogLimitKB {
-		t.Errorf("Expected %d, got %d", testRules.LogLimitKB, agentConfig.LogLimitKB)
-	}
-
-	if agentConfig.TestSetPath != testRules.TestsetPathContainer {
-		t.Errorf("Expected %s, got %s", testRules.TestsetPathContainer, agentConfig.TestSetPath)
-	}
-
-	if !slices.Equal(agentConfig.CompileArgs, testRules.CompileArgs) {
-		t.Errorf("Compilation args mismatched\n")
-	}
-
-	if !slices.Equal(agentConfig.RunArgs, testRules.RunArgs) {
-		t.Errorf("Runtime args mismatched\n")
-	}
+	assert.String(t, testRules.SubmissionID, agentConfig.SubmissionID)
+	assert.Uint32(t, testRules.Timeoutsec, agentConfig.TimeoutSec)
+	assert.Uint32(t, testRules.LogLimitKB, agentConfig.LogLimitKB)
+	assert.String(t, testRules.TestsetPathContainer, agentConfig.TestSetPath)
+	assert.Slice(t, agentConfig.CompileArgs, testRules.CompileArgs)
+	assert.Slice(t, agentConfig.RunArgs, testRules.RunArgs)
 }

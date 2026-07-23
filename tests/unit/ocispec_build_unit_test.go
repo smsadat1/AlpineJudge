@@ -30,8 +30,12 @@ func Test_Build_ociSpecOpts(t *testing.T) {
 		CodePathContainer:    "/workspace/main.go",
 		TestsetPathHost:      "/tmp/alpinejudge/runner-001/" + "ts123/",
 		TestsetPathContainer: "/workspace/" + "ts123/",
-		Env:                  testEnv,
-		EventSocket:          "../artifacts/agent.sock",
+		HostEventSocket:      "../aritfacts/agent.sock",
+		ContainerEventSocket: "/workspace/agent.sock",
+
+		EventQueueName: "sse-event-queue",
+
+		Env: testEnv,
 
 		MemoryLimitMB:  1024,
 		CpuQuota:       2,
