@@ -45,4 +45,6 @@ jobs:
 
       - name: Run E2E Tests
         working-directory: tests/e2e
-        run: bash rune2e.sh
+        run: | 
+          chmod +x rune2e.sh
+          sudo ./rune2e.sh
