@@ -6,6 +6,7 @@ use (
 	./runner/utils
 	./shared
 	./tests
-	./tests/unit
+	./tests/assert
 	./tests/integration
+	./tests/unit
 )
