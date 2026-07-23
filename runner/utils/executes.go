@@ -21,13 +21,17 @@ type ExecRules struct {
 	TestID       string
 
 	// environment
-	CodePathHost         string            // oci | ok
-	CodePathContainer    string            // oci | ok
-	TestsetPathHost      string            // oci | ok
-	TestsetPathContainer string            // oci | ok
-	Env                  map[string]string // only "CONFIG_PATH=/workspace/execspec.json" | ok
-	EventSocket          string
-	EventQueueName       string
+	CodePathHost               string // oci | ok
+	CodePathContainer          string // oci | ok
+	TestsetPathHost            string // oci | ok
+	TestsetPathContainer       string // oci | ok
+	ExecutionSpecPathHost      string
+	ExecutionSpecPathContainer string
+	HostEventSocket            string
+	ContainerEventSocket       string
+	EventQueueName             string
+
+	Env map[string]string // only "CONFIG_PATH=/workspace/execspec.json" | ok
 
 	// rules
 	MemoryLimitMB  uint64  // oci | ok
