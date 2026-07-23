@@ -3,7 +3,6 @@ package ajagent
 import (
 	"encoding/json"
 	"local/runner/ajagent"
-	"log"
 	"net"
 	"os"
 	"testing"
@@ -12,45 +11,49 @@ import (
 
 // HaltOnFirstError = true
 func Test_RunnerAgent_Integration_HFE(t *testing.T) {
-
-	t.Setenv("STREAM_SOCKET_PATH", "artifacts/agent.sock")
+	socketPath := "artifacts/agent.sock"
+	t.Setenv("STREAM_SOCKET_PATH", socketPath)
 	t.Setenv("CONFIG_PATH", "artifacts/execspec3.json")
 	t.Setenv("TESTSET_PATH", "artifacts/ts001")
 
-	// remove stale socket file if left behind & start listener
-	serverDone := make(chan struct{})
-	_ = os.Remove(os.Getenv("STREAM_SOCKET_PATH"))
+	_ = os.Remove(socketPath)
 
-	listener, err := net.Listen("unix", os.Getenv("STREAM_SOCKET_PATH"))
+	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
-		log.Fatalf("Failed to create socket listener: %v", err)
+		t.Fatalf("Failed to create socket listener: %v", err)
 	}
+	defer listener.Close()
 
+	serverDone := make(chan struct{})
 	counter := 0
-	go func() {
-		defer close(serverDone)
 
-		// accept the incoming connection from your agent runner
+	go func() {
+		defer close(serverDone) // Signals main thread when connection closes & reads finish
+
 		conn, err := listener.Accept()
 		if err != nil {
 			return
 		}
 		defer conn.Close()
 
-		// Host reads events off the socket
 		decoder := json.NewDecoder(conn)
-
 		for {
 			var event utils.AgentEventSpec
 			if err := decoder.Decode(&event); err != nil {
-				break // Connection closed or EOF reached
+				break // EOF when agent closes connection
 			}
 			counter++
 		}
-		if counter != 4 {
-			t.Error("Supposed to stop at 4th test")
-		}
 	}()
 
+	// Run the agent
 	ajagent.RunnerAgent()
+
+	// 🚨 WAIT FOR SOCKET READER TO FINISH PROCESSING ALL BUFFERS
+	<-serverDone
+
+	// Now evaluate counter on the main thread safely
+	if counter != 4 {
+		t.Errorf("Supposed to stop at 4th test, but got counter = %d", counter)
+	}
 }
