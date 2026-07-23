@@ -28,31 +28,38 @@ func Test_RunnerAgent_Integration_HFE(t *testing.T) {
 	counter := 0
 
 	go func() {
-		defer close(serverDone) // Signals main thread when connection closes & reads finish
+		defer close(serverDone)
 
-		conn, err := listener.Accept()
-		if err != nil {
-			return
-		}
-		defer conn.Close()
-
-		decoder := json.NewDecoder(conn)
 		for {
-			var event utils.AgentEventSpec
-			if err := decoder.Decode(&event); err != nil {
-				break // EOF when agent closes connection
+			// Keep accepting connections if ajagent reconnects per event
+			conn, err := listener.Accept()
+			if err != nil {
+				return // Listener closed by main thread
 			}
-			counter++
+
+			decoder := json.NewDecoder(conn)
+			for {
+				var event utils.AgentEventSpec
+				if err := decoder.Decode(&event); err != nil {
+					// Socket closed by client or EOF, break inner loop to accept next connection if any
+					break
+				}
+				counter++
+				if counter == 4 {
+					conn.Close()
+					return // All 4 events received!
+				}
+			}
+			conn.Close()
 		}
 	}()
 
-	// Run the agent
+	// Run agent synchronous execution
 	ajagent.RunnerAgent()
 
-	// 🚨 WAIT FOR SOCKET READER TO FINISH PROCESSING ALL BUFFERS
+	// Wait for server goroutine to finish capturing 4 events
 	<-serverDone
 
-	// Now evaluate counter on the main thread safely
 	if counter != 4 {
 		t.Errorf("Supposed to stop at 4th test, but got counter = %d", counter)
 	}
