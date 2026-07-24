@@ -13,12 +13,11 @@ import (
 	"time"
 	"utils"
 
-	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_Execsubm_integration_test(t *testing.T) {
+func Test_Execsubm_integration_test_OK(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(
 		namespaces.WithNamespace(context.Background(), "test-namespace"),
@@ -26,25 +25,13 @@ func Test_Execsubm_integration_test(t *testing.T) {
 	)
 	defer cancel()
 
-	client, err := containerd.New("/run/containerd/containerd.sock")
-	if err != nil {
-		t.Skipf("Skipping integration test: local containerd socket not available: %v", err)
-	}
-	defer client.Close()
-
-	image, err := client.GetImage(ctx, "ghcr.io/smsadat1/alpinejudge/gcc:test")
-	if err != nil {
-		t.Fatalf("Failed to find image in containerd: %v", err)
-	}
-
 	// cleanup stale socket & then prepare socket
 	eventSocketPath := "../artifacts/agent.sock"
 	_ = os.RemoveAll(eventSocketPath)
 
 	tr := repository.NewTestRepository(t)
+	tr.TestExecRules.CodePathHost = "../artifacts/main.cpp"
 	tr.NewTestOCISpecOpts(t, tr.TestExecRules)
-
-	containerID := "test-subm-" + time.Now().Format("150405")
 
 	err, data := executor.Build_agentExecSpec(tr.TestExecRules)
 	if err != nil {
@@ -54,25 +41,11 @@ func Test_Execsubm_integration_test(t *testing.T) {
 		t.Fatalf("Failed to create agent execspec json:  %v\n", err)
 	}
 
-	// configure OCI Spec (Env, Mounts, Process Args)
-	container, err := client.NewContainer(
-		ctx,
-		containerID,
-		containerd.WithNewSnapshot(containerID+"-snapshot", image),
-		containerd.WithNewSpec(tr.TestOCISpecOpts...),
-	)
-	if err != nil {
-		t.Fatalf("Failed to create containerd container: %v", err)
-	}
-	defer func() {
-		// cleanup container with background context in case main ctx timed out
-		_ = container.Delete(namespaces.WithNamespace(context.Background(), "test-namespace"), containerd.WithSnapshotCleanup)
-	}()
-
-	// sin up MinIO & RabbitMQ containers via Testcontainers
+	// spin up MinIO & RabbitMQ containers via Testcontainers
 	tf := factory.NewTestFactory(t)
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
+	tf.StartRawContainer(t, ctx, *tr)
 
 	// get events from RMQ
 	interceptorQueue := make(chan amqp.Delivery, 100)
@@ -109,16 +82,18 @@ func Test_Execsubm_integration_test(t *testing.T) {
 	}()
 
 	// run ExecSubm
-	_ = executor.ExecSubm(ctx, container, tr.TestExecRules, tr.TestJobSpec, *tf.Rmqm, *tf.S3m)
+	result := executor.ExecSubm(ctx, tf.RawContainer, tr.TestExecRules, tr.TestJobSpec, *tf.Rmqm, *tf.S3m)
 
 	select {
 	case msg, ok := <-collectMesg:
 		if !ok {
 			t.Errorf("Failed to capture live status event: %s", msg)
 		}
-		t.Logf("Successfully captured live status event: %s", msg)
 	case <-ctx.Done():
 		t.Fatal("Timed out waiting for live status message on RMQ")
 	}
+
+	t.Logf("\nResult =======\nSubmissionID: %v\nLanguage: %v\nVersion: %v\nElapsed time: %vms\nStatus: %v\nDetail: %v\n",
+		result.SubmissionId, result.Language, result.Version, result.Interval, result.Status, result.Details)
 
 }

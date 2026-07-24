@@ -51,7 +51,7 @@ func NewTestRepository(t *testing.T) *TestRepository {
 		RunArgs:      []string{"/tmp/main"},
 		TestID:       "ts001",
 
-		CodePathHost:               "../artifacts/main.cpp",
+		// CodePathHost:               "../artifacts/main.cpp",
 		CodePathContainer:          "/workspace/main.cpp",
 		TestsetPathHost:            "../artifacts/ts001",
 		TestsetPathContainer:       "/workspace/ts001/",
@@ -72,7 +72,7 @@ func NewTestRepository(t *testing.T) *TestRepository {
 		CpuQuota:       2.0,
 		NoNewPrivilege: true,
 		ReadOnlyRootfs: true,
-		Timeoutsec:     300,
+		Timeoutsec:     25,
 		LogLimitKB:     512,
 	}
 
@@ -102,6 +102,8 @@ func (tr *TestRepository) NewTestOCISpecOpts(t *testing.T, testRules utils.ExecR
 
 		// resource limits
 		oci.WithMemoryLimit(memoryBytes),
+		// disable memory swap so Linux doesn't give extra memory with it which results to never hitting MLE
+		oci.WithMemorySwap(int64(memoryBytes)),
 		oci.WithPidsLimit(testRules.PidLimit),
 		oci.WithCPUCFS(quota, period),
 
@@ -109,12 +111,12 @@ func (tr *TestRepository) NewTestOCISpecOpts(t *testing.T, testRules utils.ExecR
 		oci.WithMounts([]specs.Mount{
 
 			// DEBUG only
-			// {
-			// 	Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
-			// 	Destination: "/usr/bin/ajagent",
-			// 	Type:        "bind",
-			// 	Options:     []string{"bind", "ro"},
-			// },
+			{
+				Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
+				Destination: "/usr/bin/ajagent",
+				Type:        "bind",
+				Options:     []string{"bind", "ro"},
+			},
 
 			{
 				// writable /tmp for temp objects
