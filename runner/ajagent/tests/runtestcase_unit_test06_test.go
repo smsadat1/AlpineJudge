@@ -37,7 +37,7 @@ func Test_runTestCase_RE_Aborted(t *testing.T) {
 				break // Connection closed or EOF reached
 			}
 			th.assert(t, "ERROR", event.EvenType)
-			th.assert(t, "Runtime Errror", event.Status)
+			th.assert(t, "Runtime error", event.Status)
 			th.assert(t, "Aborted (SIGABRT / Assertion failed)", event.Details)
 		}
 	}()
