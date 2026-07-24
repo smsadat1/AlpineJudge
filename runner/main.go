@@ -123,7 +123,7 @@ func main() {
 				log.Printf("Allocating slot. Launching isolation runtime for message ID: %s\n", delivery.MessageId)
 
 				jobspec, err := utils.ProcessJobSpec(ctx, msg)
-				result, err := executor.ExecSubmission(cCtx, client, *s3m, jobspec, *rmqm)
+				result, err := executor.OrchestrateSubm(cCtx, client, *s3m, jobspec, *rmqm)
 				_ = result
 				if err != nil {
 					log.Printf("Execution Failure: Container run errored out: %v", err)

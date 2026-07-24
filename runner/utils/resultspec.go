@@ -3,16 +3,16 @@ package utils
 type Verdict string
 
 const (
-	VerdictAC  Verdict = "AC"  // accepted (agent)
-	VerdictWA  Verdict = "WA"  // wrong answer (agent)
-	VerdictTLE Verdict = "TLE" // time limit exceeded (container)
-	VerdictMLE Verdict = "MLE" // memeory limit exceeded (container)
-	VerdictOLE Verdict = "OLE" // output limit exceeded (agent)
-	VerdictCE  Verdict = "CE"  // compilation error (agent)
-	VerdictRE  Verdict = "RE"  // runtime error (agent)
-	VerdictIE  Verdict = "IE"  // internal error (agent + container)
-	VerdictPV  Verdict = "PV"  // policy violation (container)
-	VerdictSE  Verdict = "SE"  // security error (host)
+	VerdictAC  Verdict = "AC"                    // accepted (agent)
+	VerdictWA  Verdict = "WA"                    // wrong answer (agent)
+	VerdictTLE Verdict = "Time limit exceeded"   // time limit exceeded (container)
+	VerdictMLE Verdict = "Memory limit exceeded" // memeory limit exceeded (container)
+	VerdictOLE Verdict = "OLE"                   // output limit exceeded (agent)
+	VerdictCE  Verdict = "CE"                    // compilation error (agent)
+	VerdictRE  Verdict = "RE"                    // runtime error (agent)
+	VerdictIE  Verdict = "IE"                    // internal error (agent + container)
+	VerdictPV  Verdict = "PV"                    // policy violation (container)
+	VerdictSE  Verdict = "SE"                    // security error (host)
 )
 
 type ResultSpec struct {

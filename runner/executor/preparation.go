@@ -69,10 +69,10 @@ func PrepareExecrules(
 		compileArgs = append(compileArgs, "-Wall")
 		compileArgs = append(compileArgs, "-Wextra")
 		compileArgs = append(compileArgs, "-o")
-		compileArgs = append(compileArgs, "main")
-		compileArgs = append(compileArgs, "main."+jobspec.Language)
+		compileArgs = append(compileArgs, "/tmp/main")
+		compileArgs = append(compileArgs, "/workspac/main."+jobspec.Language)
 
-		runArgs = append(runArgs, "./main")
+		runArgs = append(runArgs, "/tmp/main")
 	}
 
 	if language == "go" {
@@ -83,7 +83,7 @@ func PrepareExecrules(
 			runArgs = append(runArgs, "/usr/local/go1.26/bin/go")
 		}
 		runArgs = append(runArgs, "run")
-		runArgs = append(runArgs, "main.go")
+		runArgs = append(runArgs, "/workspace/main.go")
 	}
 
 	if language == "java" {
@@ -93,7 +93,7 @@ func PrepareExecrules(
 		case "java26":
 			compileArgs = append(compileArgs, "/usr/lib/jvm/java-26-openjdk/bin/javac")
 		}
-		compileArgs = append(compileArgs, "Main.java")
+		compileArgs = append(compileArgs, "/workspace/Main.java")
 
 		switch version {
 		case "java25":
@@ -101,7 +101,7 @@ func PrepareExecrules(
 		case "java26":
 			runArgs = append(runArgs, "/usr/lib/jvm/java-26-openjdk/bin/java")
 		}
-		runArgs = append(runArgs, "Main")
+		runArgs = append(runArgs, "/workspace/Main")
 	}
 
 	if language == "node" {
@@ -111,7 +111,7 @@ func PrepareExecrules(
 		case "node22":
 			runArgs = append(runArgs, "/usr/bin/node22")
 		}
-		runArgs = append(runArgs, "main.js")
+		runArgs = append(runArgs, "/workspace/main.js")
 	}
 
 	if language == "py" {
@@ -121,7 +121,7 @@ func PrepareExecrules(
 		case "python3.12":
 			runArgs = append(runArgs, "/usr/bin/python3.12")
 		}
-		runArgs = append(runArgs, "main.py")
+		runArgs = append(runArgs, "/workspace/main.py")
 	}
 
 	containerImage := utils.RunCfg.Images[language]

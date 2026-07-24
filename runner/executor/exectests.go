@@ -2,7 +2,6 @@ package executor
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -36,9 +35,11 @@ func ExecSubm(
 		Details:      "",
 	}
 
-	s3keyPrefix := "submissions/" + jobspec.SubmissionID + "/"
-	var stdoutWriter bytes.Buffer
-	var stderrWrite bytes.Buffer
+	_ = "submissions/" + jobspec.SubmissionID + "/"
+	// var stdoutWriter bytes.Buffer
+	// var stderrWrite bytes.Buffer
+	// var stdoutReader io.Reader
+	// var stderrReader io.Reader
 
 	// Setup unix socket
 	_ = os.Remove(rules.HostEventSocket) // cleanup stale socket
@@ -101,15 +102,12 @@ func ExecSubm(
 	// start container task
 	task, err := container.NewTask(
 		ctx,
-		cio.NewCreator(cio.WithStreams(nil, &stdoutWriter, &stderrWrite)),
+		cio.NewCreator(),
 	)
 
 	if err != nil {
 
 		log.Printf("NewTask RPC error: %v", err)
-
-		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
-		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
 
 		result.Interval = 0
 		result.Status = utils.VerdictIE
@@ -125,9 +123,6 @@ func ExecSubm(
 
 		log.Printf("NewTask RPC error: %v", err)
 
-		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
-		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
-
 		result.Interval = 0
 		result.Status = utils.VerdictIE
 		result.Details = "Failed to obtain wait status channel"
@@ -139,9 +134,6 @@ func ExecSubm(
 	if err := task.Start(ctx); err != nil {
 
 		log.Printf("NewTask RPC error: %v", err)
-
-		s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
-		s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
 
 		result.Interval = 0
 		result.Status = utils.VerdictIE
@@ -162,17 +154,13 @@ func ExecSubm(
 		elapsedMS := time.Since(start).Milliseconds()
 		result.Interval = uint64(elapsedMS)
 
-		if status.Error() != nil {
-			result.Status = utils.VerdictIE
-			result.Details = "Task exited abnormally"
-		} else if status.ExitCode() != 0 {
-			result.Status = utils.VerdictIE
-			result.Details = fmt.Sprintf("Task exited with non-zero exit code: %d", status.ExitCode())
-		} else {
+		if status.ExitCode() == 0 {
 			result.Status = utils.VerdictAC
-			result.Details = "Task executed successfully"
+			result.Details = "Container exited normally"
+		} else {
+			result.Status = utils.VerdictRE
+			result.Details = "Container exit was not normal"
 		}
-
 	case <-ctxTimeout.Done():
 		// TLE
 		elapsedMS := time.Since(start).Milliseconds()
@@ -183,13 +171,6 @@ func ExecSubm(
 		log.Print("Task timedout. Sending SIGKILL to container...")
 		_ = task.Kill(ctx, syscall.SIGKILL)
 	}
-
-	// TODO: Fix stdout & stderr being empty issue
-	log.Printf(" Stdout output: %s", stdoutWriter.String())
-	log.Printf(" Stderr output: %s", stderrWrite.String())
-
-	s3m.UploadFileToS3(ctx, s3keyPrefix+"stdout.log", bytes.NewReader(stdoutWriter.Bytes()))
-	s3m.UploadFileToS3(ctx, s3keyPrefix+"stderr.log", bytes.NewReader(stderrWrite.Bytes()))
 
 	return result
 }

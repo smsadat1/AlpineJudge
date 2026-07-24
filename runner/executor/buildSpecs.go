@@ -4,6 +4,7 @@ package executor
 import (
 	"encoding/json"
 	"log"
+	"path/filepath"
 	"utils"
 
 	oci "github.com/containerd/containerd/oci"
@@ -13,7 +14,13 @@ import (
 func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 
 	memoryBytes := uint64(rules.MemoryLimitMB * 1024 * 1024)
-	period := uint64(100000)
+	period := uint64(100000) // 100 ms period
+	quota := int64(rules.CpuQuota * float64(period))
+
+	absCodeHost, _ := filepath.Abs(rules.CodePathHost)
+	absExecSpecHost, _ := filepath.Abs(rules.ExecutionSpecPathHost)
+	absSocketHost, _ := filepath.Abs(rules.HostEventSocket)
+	absTestsetHost, _ := filepath.Abs(rules.TestsetPathHost)
 
 	opts := []oci.SpecOpts{
 		// start with default Linux specs or else OCI spec fails
@@ -21,35 +28,44 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 
 		// resource limits
 		oci.WithMemoryLimit(memoryBytes),
+		// disable memory swap so Linux doesn't give extra memory with it which results to never hitting MLE
+		oci.WithMemorySwap(int64(memoryBytes)),
 		oci.WithPidsLimit(rules.PidLimit),
-		oci.WithCPUCFS(int64(rules.CpuQuota), period),
+		oci.WithCPUCFS(quota, period),
 
 		// mount file
 		oci.WithMounts([]specs.Mount{
 			{
+				// writable /tmp for temp objects
+				Source:      "tmpfs",
+				Destination: "/tmp",
+				Type:        "tmpfs",
+				Options:     []string{"nosuid", "nodev", "mode=1777"},
+			},
+			{
 				// source code (single file mount)
-				Source:      rules.CodePathHost,
+				Source:      absCodeHost,
 				Destination: rules.CodePathContainer,
 				Type:        "bind",
 				Options:     []string{"bind", "ro"},
 			},
 			{
 				// agent execution specs (single file mount)
-				Source:      "/tmp/alpinejudge/" + rules.RunnerID + "/execspec.json",
-				Destination: "/workspace/execspec.json",
+				Source:      absExecSpecHost,
+				Destination: rules.ExecutionSpecPathContainer,
 				Type:        "bind",
 				Options:     []string{"bind", "ro"},
 			},
 			{
 				// unix socker for agent to stream execution state
-				Source:      rules.HostEventSocket,
+				Source:      absSocketHost,
 				Destination: rules.ContainerEventSocket,
 				Type:        "bind",
 				Options:     []string{"bind", "rw"},
 			},
 			{
 				// testset (direotory mount)
-				Source:      rules.TestsetPathHost,
+				Source:      absTestsetHost,
 				Destination: rules.TestsetPathContainer,
 				Type:        "bind",
 				Options:     []string{"rbind", "ro"},
@@ -57,9 +73,11 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 		}),
 
 		oci.WithEnv([]string{
+			// Must use this so all necessary tools are available in /usr/bin & /usr/sbin as some images doesn't do that b default
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"CONFIG_PATH=/workspace/execspec.json",
 			"TESTSET_PATH=/workspace/" + rules.TestID + "/",
-			"STREAM_SOCKET_PATH=/workspace/agentstream.sock",
+			"STREAM_SOCKET_PATH=/workspace/agent.sock",
 		}),
 	}
 

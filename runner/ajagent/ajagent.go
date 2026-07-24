@@ -18,14 +18,14 @@ import (
 )
 
 var (
+	OK  = "Running test"          // acceptable
 	WA  = "Wrong answer"          // acceptable
+	TLE = "Time limit exceeded"   // not acceptable
+	MLE = "Memory limit exceeded" // not acceptable
 	IE  = "Internal error"        // not acceptable
-	PE  = "Presentation error"    // acceptable
 	CE  = "Compilation error"     // not acceptable
 	OLE = "Output limit exceeded" // not acceptable
-	TLE = "Time limit exceeded"   // not acceptable
-	RE  = "Runtime Errror"        // not acceptable
-	OK  = "Running test"          // acceptable
+	RE  = "Runtime error"         // not acceptable
 )
 var ErrorOLE = errors.New(OLE)
 
@@ -230,19 +230,6 @@ func RunnerAgent() {
 
 	// an encoder to auto append newlines
 	streamEnconder := json.NewEncoder(streamConn)
-
-	// 2. Load env vars
-	// if err := godotenv.Load(); err != nil {
-	// 	log.Println()
-	// 	// stream events
-	// 	eventStatus.EvenType = "FALLBACK"
-	// 	eventStatus.Status = PE
-	// 	eventStatus.Details = "No .env file found, reading from direct system environment variables"
-	// 	if err := streamEnconder.Encode(eventStatus); err != nil {
-	// 		log.Printf("Failed to write to event stream pipeline: %v", err)
-	// 		return
-	// 	}
-	// }
 
 	// 2. Find & load /workspace/execspec.json to spec
 	jsonData, err := os.ReadFile(os.Getenv("CONFIG_PATH"))

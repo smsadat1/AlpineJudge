@@ -13,7 +13,7 @@ import (
 )
 
 // manages entire container lifecycle
-func ExecSubmission(
+func OrchestrateSubm(
 	ctx context.Context, client *containerd.Client, s3m shared.S3Manager, jobspec shared.JobSpec, rmqm shared.RMQManager,
 ) (utils.ResultSpec, error) {
 
