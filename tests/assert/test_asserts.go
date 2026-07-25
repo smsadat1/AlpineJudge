@@ -28,6 +28,13 @@ func Uint32(t *testing.T, expected uint32, achieved uint32) {
 	}
 }
 
+func Int64(t *testing.T, expected int64, achieved int64) {
+	t.Helper()
+	if expected != achieved {
+		t.Errorf("Expected %d, got %d", expected, achieved)
+	}
+}
+
 // boolean assertion
 func Bool(t *testing.T, expected bool, achieved bool) {
 

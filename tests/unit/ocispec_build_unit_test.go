@@ -1,8 +1,10 @@
 package unit_test
 
 import (
+	"assert"
 	"context"
 	"local/runner/executor"
+	"path/filepath"
 	"testing"
 	"time"
 	"utils"
@@ -26,9 +28,9 @@ func Test_Build_ociSpecOpts(t *testing.T) {
 		RunArgs:     []string{""},
 		TestID:      "ts123",
 
-		CodePathHost:         "/tmp/alpinejudge/runner-001/main.go",
+		CodePathHost:         "../artifacts/main.go",
 		CodePathContainer:    "/workspace/main.go",
-		TestsetPathHost:      "/tmp/alpinejudge/runner-001/" + "ts123/",
+		TestsetPathHost:      "../artifacts/ts001/",
 		TestsetPathContainer: "/workspace/" + "ts123/",
 		HostEventSocket:      "../aritfacts/agent.sock",
 		ContainerEventSocket: "/workspace/agent.sock",
@@ -81,40 +83,50 @@ func Test_Build_ociSpecOpts(t *testing.T) {
 
 		// Memory Limit (OCI expects bytes: MB * 1024 * 1024)
 		expectedMemoryBytes := int64(testRules.MemoryLimitMB * 1024 * 1024)
-		if res.Memory != nil && *res.Memory.Limit != expectedMemoryBytes {
-			t.Errorf("Expected memory limit %d bytes, got %d", expectedMemoryBytes, *res.Memory.Limit)
-		}
+		assert.Int64(t, expectedMemoryBytes, *res.Memory.Limit)
 
 		// PIDs Limit
 		expectedPidLimit := int64(testRules.PidLimit)
-		if res.Pids != nil && res.Pids.Limit != testRules.PidLimit {
-			t.Errorf("Expected PIDs limit %d, got %d", expectedPidLimit, res.Pids.Limit)
-		}
+		assert.Int64(t, expectedPidLimit, res.Pids.Limit)
 
-		// CPU Quota & Period
-		if res.CPU != nil {
-			// default cgroup period is usually 100000 microseconds
-			expectedQuota := int64(testRules.CpuQuota)
-			if *res.CPU.Quota != int64(expectedQuota) {
-				t.Errorf("Expected CPU quota %d, got %d", expectedQuota, *res.CPU.Quota)
-			}
-		}
+		// default cgroup period is usually 100000 microseconds
+		expectedQuota := int64(testRules.CpuQuota) * 100000
+		// warn: values passed here are int64, risks of loosing precision in future
+		assert.Int64(t, expectedQuota, *res.CPU.Quota)
 	} else {
 		t.Error("Expected Linux Resources section to be defined for cgroup validation")
 	}
 
 	// ASSERTION 5: Storage Bind Mounts
-	var foundCodeMount, foundTestsetMount bool
+	var foundCodeMount, foundExecMount, foundSockMount, foundTestsetMount bool
+
+	expectedCodePathHost, _ := filepath.Abs(testRules.CodePathHost)
+	expectedExecutionSpecPathHost, _ := filepath.Abs(testRules.ExecutionSpecPathHost)
+	expectedHostEventSocket, _ := filepath.Abs(testRules.HostEventSocket)
+	expectedTestPathHost, _ := filepath.Abs(testRules.TestsetPathHost)
+
 	for _, mount := range testOCISpecs.Mounts {
-		if mount.Source == testRules.CodePathHost && mount.Destination == testRules.CodePathContainer {
+		if mount.Source == expectedCodePathHost && mount.Destination == testRules.CodePathContainer {
 			foundCodeMount = true
 		}
-		if mount.Source == testRules.TestsetPathHost && mount.Destination == testRules.TestsetPathContainer {
+		if mount.Source == expectedExecutionSpecPathHost && mount.Destination == testRules.ExecutionSpecPathContainer {
+			foundExecMount = true
+		}
+		if mount.Source == expectedHostEventSocket && mount.Destination == testRules.ContainerEventSocket {
+			foundSockMount = true
+		}
+		if mount.Source == expectedTestPathHost && mount.Destination == testRules.TestsetPathContainer {
 			foundTestsetMount = true
 		}
 	}
 
 	if !foundCodeMount {
+		t.Errorf("Missing code execution bind mount: %s -> %s", testRules.CodePathHost, testRules.CodePathContainer)
+	}
+	if !foundExecMount {
+		t.Errorf("Missing code execution bind mount: %s -> %s", testRules.CodePathHost, testRules.CodePathContainer)
+	}
+	if !foundSockMount {
 		t.Errorf("Missing code execution bind mount: %s -> %s", testRules.CodePathHost, testRules.CodePathContainer)
 	}
 	if !foundTestsetMount {

@@ -70,7 +70,7 @@ func PrepareExecrules(
 		compileArgs = append(compileArgs, "-Wextra")
 		compileArgs = append(compileArgs, "-o")
 		compileArgs = append(compileArgs, "/tmp/main")
-		compileArgs = append(compileArgs, "/workspac/main."+jobspec.Language)
+		compileArgs = append(compileArgs, "/workspace/main."+jobspec.Language)
 
 		runArgs = append(runArgs, "/tmp/main")
 	}

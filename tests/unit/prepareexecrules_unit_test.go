@@ -66,9 +66,9 @@ func Test_PrepareExecrules(t *testing.T) {
 
 	expectedImage := "ghcr.io/smsadat1/ajgcc:v0.1.0"
 	expectedCompileArgs := []string{
-		"/usr/bin/g++", "-std=c++20", "-Wall", "-Wextra", "-o", "main", "main.cc",
+		"/usr/bin/g++", "-std=c++20", "-Wall", "-Wextra", "-o", "/tmp/main", "/workspace/main.cc",
 	}
-	expectedRunArgs := []string{"./main"}
+	expectedRunArgs := []string{"/tmp/main"}
 	expectedCodePathHost := executor.HostSrcFilePath
 	expectedCodePathContainer := "/workspace/main.cc"
 	expectedTestsetPathHost := executor.HostTestFilePath
