@@ -2,7 +2,13 @@ package executor
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"math/rand"
+	"os"
 	"utils"
+
+	nanoid "github.com/jaevor/go-nanoid"
 
 	"shared"
 )
@@ -29,12 +35,20 @@ func downloadFileS3(
 	return nil
 }
 
+func generateContainerID() string {
+	nanoID, err := nanoid.CustomASCII("0123456789", 12)
+	contID := nanoID()
+	if err != nil {
+		// fallback to random numbers
+		contID = fmt.Sprint(rand.Intn(3000000))
+	}
+	return contID
+}
+
 func PrepareExecrules(
 	ctx context.Context, s3m shared.S3Manager, jobspec shared.JobSpec,
 	testMode bool, // used only for tests | must stay false for production
 ) (error, utils.ExecRules) {
-
-	// submID := jobspec.SubmissionID
 	language := jobspec.Language
 	version := jobspec.Version
 	testID := jobspec.Testset
@@ -44,11 +58,11 @@ func PrepareExecrules(
 
 	if language == "c" || language == "cpp" || language == "cc" {
 		if language == "c" {
-			compileArgs = append(compileArgs, "/usr/bin/gcc")
+			compileArgs = append(compileArgs, "gcc")
 		}
 
 		if language == "cpp" || language == "cc" {
-			compileArgs = append(compileArgs, "/usr/bin/g++")
+			compileArgs = append(compileArgs, "g++")
 		}
 
 		switch version {
@@ -124,13 +138,13 @@ func PrepareExecrules(
 		runArgs = append(runArgs, "/workspace/main.py")
 	}
 
-	containerImage := utils.RunCfg.Images[language]
-	hostWorkDir := "/tmp/ajrunner/" + utils.RunCfg.RunnerID + "/"
+	containerImage := jobspec.Image
+	hostWorkDir := "/tmp/" + jobspec.SubmissionID + "/"
 	hostSrcFilePath := hostWorkDir + "main." + language
 	hostTestFileDir := hostWorkDir + testID
 
-	containerSrcFilePath := "/workspace/main." + language
-	containerTestFileDir := "/workspace/" + testID + "/" + jobspec.TestsetVersion + "/"
+	// containerSrcFilePath := "/workspace/main." + language
+	containerTestFileDir := "/workspace/"
 
 	// for other service's usage and testcase overrides
 	HostSrcFilePath = hostSrcFilePath
@@ -154,15 +168,38 @@ func PrepareExecrules(
 		return err, utils.ExecRules{}
 	}
 
-	execRules := utils.ExecRules{
-		Image:       containerImage,
-		CompileArgs: compileArgs,
-		RunArgs:     runArgs,
+	// create & prepare dedicated tmp dir
+	tempLocation := "/tmp/" + jobspec.SubmissionID + "/"
+	if err := os.MkdirAll(tempLocation, os.FileMode(os.O_RDWR)); err != nil {
+		return fmt.Errorf("Failed to create temporary directory: %v", err), utils.ExecRules{}
+	}
 
-		CodePathHost:         HostSrcFilePath,
-		CodePathContainer:    containerSrcFilePath,
-		TestsetPathHost:      HostTestFilePath,
-		TestsetPathContainer: containerTestFileDir,
+	// create source file on host
+	tempSrc := tempLocation + "main." + language
+	if err := os.WriteFile(tempSrc, []byte(jobspec.Source), 0644); err != nil {
+		return fmt.Errorf("write source: %w", err), utils.ExecRules{}
+	}
+
+	// create event stream socket (agent.sock)
+	tempSock := tempLocation + "agent.sock"
+	log.Printf("%v", compileArgs)
+
+	execRules := utils.ExecRules{
+		// unique container ID to avoid collision
+		ContainerID: generateContainerID(),
+
+		Image:                      containerImage,
+		CompileArgs:                compileArgs,
+		RunArgs:                    runArgs,
+		CodePathHost:               tempLocation + "main." + language,
+		CodePathContainer:          "/workspace/main." + language,
+		TestsetPathHost:            HostTestFilePath,
+		TestsetPathContainer:       containerTestFileDir,
+		ExecutionSpecPathHost:      "/tmp/" + jobspec.SubmissionID + "/execspec.json",
+		ExecutionSpecPathContainer: "/workspace/execspec.json",
+		HostEventSocket:            tempSock,
+		ContainerEventSocket:       "/tmp/agent.sock", // keep socket separate from workspace to keep socket more reliable
+		EventQueueName:             jobspec.EventQueue,
 
 		CpuQuota:       float64(utils.RunCfg.Limits.CPUQuota),
 		MemoryLimitMB:  utils.RunCfg.Limits.MemoryLimitMB,

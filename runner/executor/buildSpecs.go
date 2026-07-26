@@ -22,6 +22,8 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 	absSocketHost, _ := filepath.Abs(rules.HostEventSocket)
 	absTestsetHost, _ := filepath.Abs(rules.TestsetPathHost)
 
+	log.Printf("S: %v | T: %v | C: %v | E: %v", absSocketHost, absTestsetHost, absCodeHost, absExecSpecHost)
+
 	opts := []oci.SpecOpts{
 		// start with default Linux specs or else OCI spec fails
 		oci.WithDefaultSpec(),
@@ -35,6 +37,13 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 
 		// mount file
 		oci.WithMounts([]specs.Mount{
+			// DEBUG only
+			// {
+			// 	Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
+			// 	Destination: "/usr/bin/ajagent",
+			// 	Type:        "bind",
+			// 	Options:     []string{"bind", "ro"},
+			// },
 			{
 				// writable /tmp for temp objects
 				Source:      "tmpfs",
@@ -43,32 +52,10 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 				Options:     []string{"nosuid", "nodev", "mode=1777"},
 			},
 			{
-				// source code (single file mount)
-				Source:      absCodeHost,
-				Destination: rules.CodePathContainer,
+				Source:      "/tmp/testsub001", // Entire parent folder on host
+				Destination: "/workspace",      // Mapped as container root workspace
 				Type:        "bind",
-				Options:     []string{"bind", "ro"},
-			},
-			{
-				// agent execution specs (single file mount)
-				Source:      absExecSpecHost,
-				Destination: rules.ExecutionSpecPathContainer,
-				Type:        "bind",
-				Options:     []string{"bind", "ro"},
-			},
-			{
-				// unix socker for agent to stream execution state
-				Source:      absSocketHost,
-				Destination: rules.ContainerEventSocket,
-				Type:        "bind",
-				Options:     []string{"bind", "rw"},
-			},
-			{
-				// testset (direotory mount)
-				Source:      absTestsetHost,
-				Destination: rules.TestsetPathContainer,
-				Type:        "bind",
-				Options:     []string{"rbind", "ro"},
+				Options:     []string{"rbind", "rw"},
 			},
 		}),
 
@@ -76,7 +63,7 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 			// Must use this so all necessary tools are available in /usr/bin & /usr/sbin as some images doesn't do that b default
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"CONFIG_PATH=/workspace/execspec.json",
-			"TESTSET_PATH=/workspace/" + rules.TestID + "/",
+			"TESTSET_PATH=/workspace",
 			"STREAM_SOCKET_PATH=/workspace/agent.sock",
 		}),
 	}

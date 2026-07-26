@@ -2,6 +2,7 @@ package executor
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -24,25 +25,26 @@ func ExecSubm(
 	jobspec shared.JobSpec,
 	rmqm shared.RMQManager,
 	s3m shared.S3Manager,
-) utils.ResultSpec {
+) utils.ContainerInfo {
 
-	result := utils.ResultSpec{
-		SubmissionId: jobspec.SubmissionID,
-		Language:     jobspec.Language,
-		Version:      jobspec.Version,
-		Interval:     0,
-		Status:       "Pending",
-		Details:      "",
+	contInfo := utils.ContainerInfo{
+		SubmissionId:    jobspec.SubmissionID,
+		Language:        jobspec.Language,
+		Version:         jobspec.Version,
+		Interval:        0,
+		Status:          "Pending",
+		StatusInfo:      "",
+		ContainerStdout: "",
+		ContainerStderr: "",
 	}
 
 	_ = "submissions/" + jobspec.SubmissionID + "/"
-	// var stdoutWriter bytes.Buffer
-	// var stderrWrite bytes.Buffer
+	var stdoutWriter bytes.Buffer
+	var stderrWrite bytes.Buffer
 	// var stdoutReader io.Reader
 	// var stderrReader io.Reader
 
 	// Setup unix socket
-	_ = os.Remove(rules.HostEventSocket) // cleanup stale socket
 	listener, err := net.Listen("unix", rules.HostEventSocket)
 	if err != nil {
 		log.Fatalf("Failed to create socket listener: %v", err)
@@ -99,20 +101,19 @@ func ExecSubm(
 		}
 	}()
 
-	// start container task
 	task, err := container.NewTask(
 		ctx,
-		cio.NewCreator(),
+		cio.NewCreator(cio.WithStreams(nil, &stdoutWriter, &stderrWrite)),
 	)
 
 	if err != nil {
 
 		log.Printf("NewTask RPC error: %v", err)
 
-		result.Interval = 0
-		result.Status = utils.VerdictIE
-		result.Details = "Failed to create container task"
-		return result
+		contInfo.Interval = 0
+		contInfo.Status = utils.VerdictIE
+		contInfo.StatusInfo = "Failed to create container task"
+		return contInfo
 	}
 
 	defer task.Delete(ctx)
@@ -123,10 +124,10 @@ func ExecSubm(
 
 		log.Printf("NewTask RPC error: %v", err)
 
-		result.Interval = 0
-		result.Status = utils.VerdictIE
-		result.Details = "Failed to obtain wait status channel"
-		return result
+		contInfo.Interval = 0
+		contInfo.Status = utils.VerdictIE
+		contInfo.StatusInfo = "Failed to obtain wait status channel"
+		return contInfo
 	}
 
 	start := time.Now()
@@ -135,10 +136,10 @@ func ExecSubm(
 
 		log.Printf("NewTask RPC error: %v", err)
 
-		result.Interval = 0
-		result.Status = utils.VerdictIE
-		result.Details = "Failed to start container task"
-		return result
+		contInfo.Interval = 0
+		contInfo.Status = utils.VerdictIE
+		contInfo.StatusInfo = "Failed to start container task"
+		return contInfo
 	}
 
 	// Handle timeouts & exit
@@ -152,25 +153,31 @@ func ExecSubm(
 
 		// Process completed naturally within timeout limit
 		elapsedMS := time.Since(start).Milliseconds()
-		result.Interval = uint64(elapsedMS)
+		contInfo.Interval = uint64(elapsedMS)
 
 		if status.ExitCode() == 0 {
-			result.Status = utils.VerdictAC
-			result.Details = "Container exited normally"
+			contInfo.Status = utils.VerdictAC
+			contInfo.StatusInfo = "Container exited normally"
+			contInfo.ContainerStderr = stderrWrite.String()
+			contInfo.ContainerStdout = stdoutWriter.String()
 		} else {
-			result.Status = utils.VerdictRE
-			result.Details = "Container exit was not normal"
+			contInfo.Status = utils.VerdictRE
+			contInfo.StatusInfo = fmt.Sprintf("Container exited with code %d", status.ExitCode())
+			contInfo.ContainerStderr = stderrWrite.String()
+			contInfo.ContainerStdout = stdoutWriter.String()
 		}
 	case <-ctxTimeout.Done():
 		// TLE
 		elapsedMS := time.Since(start).Milliseconds()
-		result.Interval = uint64(elapsedMS)
-		result.Status = utils.VerdictTLE
-		result.Details = fmt.Sprintf("Task exceeded time limit of %d seconds", rules.Timeoutsec)
+		contInfo.Interval = uint64(elapsedMS)
+		contInfo.Status = utils.VerdictTLE
+		contInfo.StatusInfo = fmt.Sprintf("Task exceeded time limit of %d seconds", rules.Timeoutsec)
+		contInfo.ContainerStderr = stderrWrite.String()
+		contInfo.ContainerStdout = stdoutWriter.String()
 
 		log.Print("Task timedout. Sending SIGKILL to container...")
 		_ = task.Kill(ctx, syscall.SIGKILL)
 	}
 
-	return result
+	return contInfo
 }

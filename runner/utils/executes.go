@@ -60,11 +60,27 @@ type AgentExecSpec struct {
 	RunArgs     []string `json:"run_args"`
 }
 
-// SSE spec
+// Deprecated: use Event (UESP) instead.
 type AgentEventSpec struct {
 	EvenType string
 	Status   string
 	Details  string
+}
+
+/*
+UESP (Unified Event Streaming Protocol) defines the communication
+protocol between the in-container agent and the Execution Manager
+over a Unix domain socket.
+
+Every message transmitted through the socket is represented as an
+Event.
+*/
+type Event struct {
+	Type    string
+	Status  string
+	Stdout  string
+	Stderr  string
+	Details string
 }
 
 // stream real time logs from container

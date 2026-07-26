@@ -15,11 +15,13 @@ const (
 	VerdictSE  Verdict = "SE"                    // security error (host)
 )
 
-type ResultSpec struct {
-	SubmissionId string  `json:"submission_id"`
-	Language     string  `json:"language"`
-	Version      string  `json:"version"`
-	Interval     uint64  `json:"interval"`
-	Status       Verdict `json:"status"`
-	Details      string  `json:"details"`
+type ContainerInfo struct {
+	SubmissionId    string  `json:"submission_id"`
+	Language        string  `json:"language"`
+	Version         string  `json:"version"`
+	Interval        uint64  `json:"interval"`
+	Status          Verdict `json:"status"`
+	StatusInfo      string  `json:"status_info"`
+	ContainerStdout string  `json:"container_stdout"`
+	ContainerStderr string  `json:"container_stderr"`
 }
