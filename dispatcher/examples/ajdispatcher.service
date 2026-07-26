@@ -1,0 +1,32 @@
+[Unit]
+Description=AlpineJudge Dispatcher
+Documentation=https://github.com/smsadat1/alpinejudge/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+User=ajdispatcher
+Group=ajdispatcher
+
+ExecStart=/usr/bin/ajdispatcher
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=on-failure
+RestartSec=5s
+
+WorkingDirectory=/var/lib/ajdispatcher
+
+Environment=AJDISPATCHER_CONFIG=/etc/ajdispatcher/dispatcher.env
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
