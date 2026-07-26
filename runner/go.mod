@@ -5,6 +5,7 @@ go 1.26.3
 require (
 	github.com/containerd/containerd v1.7.33
 	github.com/containerd/containerd/v2 v2.3.3
+	github.com/jaevor/go-nanoid v1.4.0
 	github.com/rabbitmq/amqp091-go v1.12.0
 )
 
@@ -16,7 +17,6 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/jaevor/go-nanoid v1.4.0 // indirect
 	github.com/opencontainers/selinux v1.13.1 // indirect
 	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
 )
