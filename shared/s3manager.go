@@ -141,30 +141,36 @@ func (m *S3Manager) DownloadFileFromS3(
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
-
 	if err != nil {
 		return err
 	}
-
 	defer result.Body.Close()
 
+	// 1. Ensure parent directories exist on disk with 0755 permissions
+	if err := os.MkdirAll(filepath.Dir(ofileName), 0755); err != nil {
+		return fmt.Errorf("couldn't create parent directories for %s: %w", ofileName, err)
+	}
+
+	// 2. Create target file
 	file, err := os.Create(ofileName)
 	if err != nil {
-		return fmt.Errorf("Couldn't create file %v. Reason: %v\n", ofileName, err)
+		return fmt.Errorf("couldn't create file %s: %w", ofileName, err)
 	}
 	defer file.Close()
 
-	body, err := io.ReadAll(result.Body)
-	if err != nil {
-		return fmt.Errorf("Couldn't read object body from %v. Reason: %v\n", key, err)
-	}
-	_, err = file.Write(body)
+	// 3. Stream direct to file (avoids storing entire object in memory)
+	_, err = io.Copy(file, result.Body)
 	return err
 }
 
 func (m *S3Manager) DownloadDirFromS3(
 	ctx context.Context, bucket string, keyPrefix string, ofileDir string,
 ) error {
+	// Ensure keyPrefix ends with trailing slash for clean subpath extraction
+	if !strings.HasSuffix(keyPrefix, "/") {
+		keyPrefix += "/"
+	}
+
 	paginator := s3.NewListObjectsV2Paginator(m.client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(keyPrefix),
@@ -177,17 +183,22 @@ func (m *S3Manager) DownloadDirFromS3(
 		}
 
 		for _, obj := range page.Contents {
-			switch path.Base(*obj.Key) {
-			case "in.txt":
-				if err := m.DownloadFileFromS3(ctx, bucket, *obj.Key, ofileDir+"in.txt"); err != nil {
+			if obj.Key == nil || strings.HasSuffix(*obj.Key, "/") {
+				continue // Skip empty keys or folder markers
+			}
+
+			// Extract relative subpath: e.g. "s3prefix/001/in.txt" -> "001/in.txt"
+			relPath := strings.TrimPrefix(*obj.Key, keyPrefix)
+
+			// Construct full local path on disk: "/tmp/testsub001/ts001/001/in.txt"
+			localPath := filepath.Join(ofileDir, relPath)
+
+			// Filter for in.txt and out.txt
+			fileName := path.Base(*obj.Key)
+			if fileName == "in.txt" || fileName == "out.txt" {
+				if err := m.DownloadFileFromS3(ctx, bucket, *obj.Key, localPath); err != nil {
 					return err
 				}
-
-			case "out.txt":
-				if err := m.DownloadFileFromS3(ctx, bucket, *obj.Key, ofileDir+"out.txt"); err != nil {
-					return err
-				}
-
 			}
 		}
 	}
