@@ -27,7 +27,7 @@ jobs:
           go-version: '1.26'
         
       - name: Run Ajagent Integrity Tests
-        working-directory: runner/ajagent/tests
+        working-directory: runner/ajagent
         run: go test -v ./...
         
       - name: Run Unit Tests
