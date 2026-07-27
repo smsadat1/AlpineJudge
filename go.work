@@ -9,4 +9,5 @@ use (
 	./tests/assert
 	./tests/integration
 	./tests/unit
+	./runner/ajagent
 )
