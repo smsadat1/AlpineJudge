@@ -1,7 +1,7 @@
-package main
+package pkg
 
 import ajagent "ajagent/internal"
 
-func main() {
+func RunnerAgent() {
 	ajagent.RunnerAgent()
 }

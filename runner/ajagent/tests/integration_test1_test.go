@@ -1,58 +1,254 @@
-package ajagent
+package tests
 
 import (
 	"encoding/json"
-	"local/runner/ajagent"
-	"log"
-	"net"
-	"os"
+	"fmt"
 	"testing"
 	"utils"
+
+	ajagent "ajagent/pkg"
 )
 
 func Test_RunnerAgent_Integration_Ok(t *testing.T) {
-
-	t.Setenv("STREAM_SOCKET_PATH", "artifacts/agent.sock")
 	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
-	t.Setenv("TESTSET_PATH", "artifacts/ts001")
-
-	th := NewTestHarness(t)
-
-	// remove stale socket file if left behind & start listener
-	serverDone := make(chan struct{})
-	_ = os.Remove(os.Getenv("STREAM_SOCKET_PATH"))
-
-	listener, err := net.Listen("unix", os.Getenv("STREAM_SOCKET_PATH"))
-	if err != nil {
-		log.Fatalf("Failed to create socket listener: %v", err)
-	}
+	th := NewTestHarness(t, CodeOk)
+	testServerDone := make(chan struct{})
 
 	go func() {
-		defer close(serverDone)
+		defer close(testServerDone)
 
-		// accept the incoming connection from your agent runner
-		conn, err := listener.Accept()
+		conn, err := th.Listener.Accept()
 		if err != nil {
 			return
 		}
 		defer conn.Close()
 
-		// Host reads events off the socket
+		// read response
 		decoder := json.NewDecoder(conn)
 		counter := 0
 		for {
-			var event utils.AgentEventSpec
-			if err := decoder.Decode(&event); err != nil {
-				break // Connection closed or EOF reached
-			}
 			counter++
-			// just check the final test
-			if counter == 6 {
-				th.assert(t, "ACCEPT", event.EvenType)
-				th.assert(t, "Running test", event.Status)
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
 			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, fmt.Sprintf("Running test %v", counter), event.Status)
 		}
 	}()
 
 	ajagent.RunnerAgent()
+	<-testServerDone
+}
+
+func Test_RunnerAgent_Integration_HFE(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "artifacts/execspec2.json")
+	th := NewTestHarness(t, CodeWrong)
+	testServerDone := make(chan struct{})
+
+	go func() {
+		defer close(testServerDone)
+
+		conn, err := th.Listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// read response
+		decoder := json.NewDecoder(conn)
+		counter := 0
+		for {
+			counter++
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
+			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, fmt.Sprintf("Wrong answer in test %v", counter), event.Status)
+		}
+	}()
+
+	ajagent.RunnerAgent()
+	<-testServerDone
+}
+
+func Test_RunnerAgent_Integration_Abort(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
+	th := NewTestHarness(t, CodeAbrt)
+	testServerDone := make(chan struct{})
+
+	go func() {
+		defer close(testServerDone)
+
+		conn, err := th.Listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// read response
+		decoder := json.NewDecoder(conn)
+		for {
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
+			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, "Runtime error", event.Status)
+		}
+	}()
+
+	ajagent.RunnerAgent()
+	<-testServerDone
+}
+
+func Test_RunnerAgent_Integration_FPE(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
+	th := NewTestHarness(t, CodeDivByZero)
+	testServerDone := make(chan struct{})
+
+	go func() {
+		defer close(testServerDone)
+
+		conn, err := th.Listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// read response
+		decoder := json.NewDecoder(conn)
+		for {
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
+			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, "Runtime error", event.Status)
+		}
+	}()
+
+	ajagent.RunnerAgent()
+	<-testServerDone
+}
+
+func Test_RunnerAgent_Integration_OLE(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
+	th := NewTestHarness(t, CodeLogSpam)
+	testServerDone := make(chan struct{})
+
+	go func() {
+		defer close(testServerDone)
+
+		conn, err := th.Listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// read response
+		decoder := json.NewDecoder(conn)
+		for {
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
+			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, "Output limit exceeded", event.Status)
+		}
+	}()
+
+	ajagent.RunnerAgent()
+	<-testServerDone
+}
+
+func Test_RunnerAgent_Integration_Segfault(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
+	th := NewTestHarness(t, CodeSegfault)
+	testServerDone := make(chan struct{})
+
+	go func() {
+		defer close(testServerDone)
+
+		conn, err := th.Listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// read response
+		decoder := json.NewDecoder(conn)
+		for {
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
+			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, "Runtime error", event.Status)
+		}
+	}()
+
+	ajagent.RunnerAgent()
+	<-testServerDone
+}
+
+func Test_RunnerAgent_Integration_IllInstruction(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
+	th := NewTestHarness(t, CodeIll)
+	testServerDone := make(chan struct{})
+
+	go func() {
+		defer close(testServerDone)
+
+		conn, err := th.Listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// read response
+		decoder := json.NewDecoder(conn)
+		for {
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
+			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, "Runtime error", event.Status)
+		}
+	}()
+
+	ajagent.RunnerAgent()
+	<-testServerDone
+}
+
+func Test_RunnerAgent_Integration_TLE(t *testing.T) {
+	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
+	th := NewTestHarness(t, CodeSleep)
+	testServerDone := make(chan struct{})
+
+	go func() {
+		defer close(testServerDone)
+
+		conn, err := th.Listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		// read response
+		decoder := json.NewDecoder(conn)
+		for {
+			var event utils.Event
+			if err := decoder.Decode(&event); err != nil {
+				break
+			}
+			th.Assert(t, "INFO", event.Type)
+			th.Assert(t, "Time limit exceeded", event.Status)
+		}
+	}()
+
+	ajagent.RunnerAgent()
+	<-testServerDone
 }

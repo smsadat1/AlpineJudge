@@ -1,8 +1,7 @@
-package ajagent
+package tests
 
 import (
 	"encoding/json"
-	"local/runner/ajagent"
 	"log"
 	"net"
 	"os"
@@ -12,38 +11,125 @@ import (
 	"utils"
 )
 
+/*
+	create
+	/tmp/{submission_id}/agent.sock /tmp/{submission_id}/ts001/ /tmp/{submission_id}/execspec.json
+	use this for runTestCase()
+	skip testing memory spam & fork bomb
+*/
+
+const CodeOk = `
+	#include <iostream>
+
+	int main(int argc, char const *argv[])
+	{
+	    int a, b = 0;
+	    std::cin >> a >> b;
+	    std::cout << a+b << std::endl;
+	}
+`
+const CodeWrong = `
+	#include <iostream>
+
+	int main(int argc, char const *argv[])
+	{
+	    int a, b = 0;
+	    std::cin >> a >> b;
+	    std::cout << a*b << std::endl;
+	}
+`
+const CodeLogSpam = `
+	#include <iostream>
+
+	int main(int argc, char const *argv[])
+	{
+	    for (int i = 0; i < 1000000; i++)
+	    {
+	        std::cout << "LOL " << std::endl;
+	    }
+	    return 0;
+	}
+`
+const CodeDivByZero = `
+	#include <iostream>
+
+	int main()
+	{
+	    double meh = 55 / 0;
+	    std::cout << meh;
+	    return 0;
+	}
+`
+const CodeSegfault = `
+	#include <unistd.h>
+
+	int main(int argc, char const *argv[])
+	{
+	    int *p = NULL;
+	    p[1] = 69;
+	    return 0;
+	}
+`
+const CodeAbrt = `
+	#include <cassert>
+
+	int main(int argc, char const *argv[])
+	{
+	    int x = 9;
+	    assert(x == 10);
+	    return 0;
+	}
+`
+const CodeSleep = `
+	#include <unistd.h>
+	
+	int main(int argc, char const *argv[])
+	{
+	    sleep(100000000);
+	    return 0;
+	}
+	
+`
+const CodeIll = `
+	int main()
+	{
+	    __builtin_trap();
+	    return 0;
+	}
+`
+
 type TestHarness struct {
 	SocketPath     string
 	TestsetPath    string
 	Listener       net.Listener
 	TestSpec       utils.AgentExecSpec
 	streamEnconder *json.Encoder
+	StreamConn     net.Conn
 }
 
-/*
-creates directories, cleans up old artifacts, sets up environment
-variables, and starts a Unix domain socket listener bound to the current test lifecycle.
-*/
-func NewTestHarness(t *testing.T) *TestHarness {
-	t.Helper() // Marks this function as a test helper so log line numbers point to your actual test
+func NewTestHarness(t *testing.T, testcode string) *TestHarness {
+	t.Helper()
 
 	artifactsDir := "artifacts"
-	sockPath := filepath.Join(artifactsDir, "agent.sock")
+	sockPath := "/tmp/agent.sock"
+	// sockPath := filepath.Join(artifactsDir, "agent.sock")
 	testsetPath := filepath.Join(artifactsDir, "ts001")
 
-	// 1. Set environment variables for the test process
+	// set test env vars
 	t.Setenv("STREAM_SOCKET_PATH", sockPath)
 	t.Setenv("TESTSET_PATH", testsetPath)
 
-	// 2. Ensure clean directories
 	if err := os.MkdirAll(testsetPath, 0755); err != nil {
 		t.Fatalf("Harness: failed to create artifacts dir: %v", err)
 	}
 
-	// 3. Remove stale socket file if left behind from a previous run
-	_ = os.Remove(sockPath)
+	// create test code file
+	if err := os.WriteFile("artifacts/main.cpp", []byte(testcode), 0666); err != nil {
+		t.Fatalf("Harness: failed to create test file: %v", err)
+	}
 
-	// 4. Start the socket listener
+	// prepare unix socket (remove stale socket first)
+	_ = os.Remove(sockPath)
 	listener, err := net.Listen("unix", sockPath)
 	if err != nil {
 		t.Fatalf("Harness: failed to create socket listener: %v", err)
@@ -55,8 +141,7 @@ func NewTestHarness(t *testing.T) *TestHarness {
 		Listener:    listener,
 	}
 
-	// 5. Register automatic teardown with testing.T
-	// t.Cleanup runs automatically when the test (and all its subtests) completes!
+	// auto cleanup
 	t.Cleanup(func() {
 		h.CloseTestHarness()
 	})
@@ -71,32 +156,26 @@ func (th *TestHarness) InitHarnessTestSpec() {
 		LogLimitKB:       1,
 		TimeoutSec:       45,
 		TestSetPath:      "artifacts/ts001",
-		CompileArgs:      []string{"/usr/bin/g++", "-std=c++17", "-Wall", "-Wextra", "-o", "artifacts/main", ""},
+		CompileArgs:      []string{"/usr/bin/g++", "-std=c++17", "-Wall", "-Wextra", "-o", "artifacts/main", "artifacts/main.cpp"},
 		RunArgs:          []string{"./artifacts/main"},
 	}
 }
 
-func (th *TestHarness) assert(t *testing.T, expected string, recieved string) {
-	if expected != recieved {
-		t.Errorf("Expected: %v | Received: %v", expected, recieved)
-	}
-}
-
-func (th *TestHarness) connect(t *testing.T) {
+// only use for unit test | using it in integration test will cause double socket connection and test will hand
+func (th *TestHarness) Connect(t *testing.T) {
 	t.Helper()
 	// find & connect to event stream socket
 	testStreamConn, err := net.Dial("unix", os.Getenv("STREAM_SOCKET_PATH"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer testStreamConn.Close()
 
 	// an encoder to auto append newlines
 	th.streamEnconder = json.NewEncoder(testStreamConn)
-
+	th.StreamConn = testStreamConn
 }
 
-func (th *TestHarness) compile(t *testing.T) {
+func (th *TestHarness) Compile(t *testing.T) {
 
 	t.Helper()
 
@@ -109,39 +188,9 @@ func (th *TestHarness) compile(t *testing.T) {
 	}
 }
 
-func (th *TestHarness) run(t *testing.T) {
-
-	t.Helper()
-
-	entries, err := os.ReadDir(os.Getenv("TESTSET_PATH"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testCount := 0
-	for _, ts := range entries {
-
-		if !ts.IsDir() {
-			continue
-		}
-
-		testcaseDir := filepath.Join(th.TestSpec.TestSetPath, ts.Name())
-		inputPath := filepath.Join(testcaseDir, "in.txt")
-		expectedPath := filepath.Join(testcaseDir, "out.txt")
-
-		testCount++
-		eventStatus := ajagent.RunTestCase(th.TestSpec, inputPath, expectedPath, testCount)
-
-		// stream events
-		if err := th.streamEnconder.Encode(eventStatus); err != nil {
-			log.Printf("Failed to write to event stream pipeline: %v", err)
-			break
-		}
-
-		// continue unless HaltOnFirstError is True & no major errors (OLE IE)
-		if th.TestSpec.HaltOnFirstError && eventStatus.EvenType == "ERROR" {
-			break
-		}
+func (th *TestHarness) Assert(t *testing.T, expected string, recieved string) {
+	if expected != recieved {
+		t.Errorf("Expected: %v | Received: %v", expected, recieved)
 	}
 }
 
