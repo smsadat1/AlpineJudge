@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"shared"
+	"strings"
 	"syscall"
 	"time"
 	"utils"
@@ -17,6 +19,33 @@ import (
 	"github.com/containerd/containerd/cio"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+// publish rmq specific event payload directly to RMQ in real time
+func routeToRMQ(sockCtx context.Context, queuename string, rmqm shared.RMQManager, payload []byte) {
+
+	var rmqpayload utils.RMQData
+	var msg amqp.Publishing
+	json.Unmarshal(payload, &rmqpayload)
+	rmqdata, err := json.Marshal(rmqpayload)
+	if err != nil {
+		msg = amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			Timestamp:    time.Now(),
+		}
+		log.Printf("Failed to marshal RMQ payload %v", err)
+	}
+	msg = amqp.Publishing{
+		ContentType:  "application/json",
+		DeliveryMode: amqp.Persistent,
+		Timestamp:    time.Now(),
+		Body:         []byte(rmqdata),
+	}
+
+	if err := rmqm.Publish(sockCtx, queuename, msg); err != nil {
+		log.Printf("Failed to stream event to RMQ: %v", err)
+	}
+}
 
 func ExecSubm(
 	ctx context.Context,
@@ -84,20 +113,14 @@ func ExecSubm(
 				for scanner.Scan() {
 					eventPayload := scanner.Bytes()
 
-					// split payload into RMQ part (Type, Status, Details) & S3 part (Stdout, Stderr)
-					// TODO: Implement EventRouter()
+					// pass Type, Status & Details in RMQ
+					routeToRMQ(sockCtx, rules.EventQueueName, rmqm, eventPayload)
 
-					// publish event payload directly to RMQ in real time
-					msg := amqp.Publishing{
-						ContentType:  "application/json",
-						DeliveryMode: amqp.Persistent,
-						Timestamp:    time.Now(),
-						Body:         eventPayload,
-					}
-
-					if err := rmqm.Publish(sockCtx, rules.EventQueueName, msg); err != nil {
-						log.Printf("Failed to stream event to RMQ: %v", err)
-					}
+					// upload stdout & stderr in S3
+					var forS3 utils.Event
+					json.Unmarshal(eventPayload, &forS3)
+					s3m.UploadFileToS3(sockCtx, "submissions/"+jobspec.SubmissionID+"/stdout.log", strings.NewReader(forS3.Stdout))
+					s3m.UploadFileToS3(sockCtx, "submissions/"+jobspec.SubmissionID+"/stderr.log", strings.NewReader(forS3.Stderr))
 				}
 
 			}(conn)
