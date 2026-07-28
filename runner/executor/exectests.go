@@ -84,6 +84,9 @@ func ExecSubm(
 				for scanner.Scan() {
 					eventPayload := scanner.Bytes()
 
+					// split payload into RMQ part (Type, Status, Details) & S3 part (Stdout, Stderr)
+					// TODO: Implement EventRouter()
+
 					// publish event payload directly to RMQ in real time
 					msg := amqp.Publishing{
 						ContentType:  "application/json",

@@ -30,20 +30,13 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 
 		// resource limits
 		oci.WithMemoryLimit(memoryBytes),
-		// disable memory swap so Linux doesn't give extra memory with it which results to never hitting MLE
+		// fix memory swap so Linux doesn't abuse swap to give extra memory without limits
 		oci.WithMemorySwap(int64(memoryBytes)),
 		oci.WithPidsLimit(rules.PidLimit),
 		oci.WithCPUCFS(quota, period),
 
 		// mount file
 		oci.WithMounts([]specs.Mount{
-			// DEBUG only
-			// {
-			// 	Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
-			// 	Destination: "/usr/bin/ajagent",
-			// 	Type:        "bind",
-			// 	Options:     []string{"bind", "ro"},
-			// },
 			{
 				// writable /tmp for temp objects
 				Source:      "tmpfs",

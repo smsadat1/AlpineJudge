@@ -36,9 +36,9 @@ func OrchestrateSubm(
 	}
 
 	// download testsets from S3
-	if err := os.Mkdir("/tmp/"+jobspec.SubmissionID+"/"+jobspec.Testset+"/", os.FileMode(os.O_RDWR)); err != nil {
-		return utils.ContainerInfo{}, fmt.Errorf("Failed to create temporary testset location:  %v\n", err)
-	}
+	// if err := os.Mkdir("/tmp/"+jobspec.SubmissionID+"/"+jobspec.Testset+"/", os.FileMode(os.O_RDWR)); err != nil {
+	// 	return utils.ContainerInfo{}, fmt.Errorf("Failed to create temporary testset location:  %v\n", err)
+	// }
 	if err := s3m.DownloadDirFromS3(ctx, jobspec.Bucket, jobspec.TestsetS3Key, "/tmp/"+jobspec.SubmissionID+"/"); err != nil {
 		return utils.ContainerInfo{}, fmt.Errorf("Failed to download testet from S3:  %v\n", err)
 	}

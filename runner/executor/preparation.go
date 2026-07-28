@@ -170,9 +170,9 @@ func PrepareExecrules(
 
 	// create & prepare dedicated tmp dir
 	tempLocation := "/tmp/" + jobspec.SubmissionID + "/"
-	if err := os.MkdirAll(tempLocation, os.FileMode(os.O_RDWR)); err != nil {
-		return fmt.Errorf("Failed to create temporary directory: %v", err), utils.ExecRules{}
-	}
+	// if err := os.MkdirAll(tempLocation, os.FileMode(os.O_RDWR)); err != nil {
+	// 	return fmt.Errorf("Failed to create temporary directory: %v", err), utils.ExecRules{}
+	// }
 
 	// create source file on host
 	tempSrc := tempLocation + "main." + language
@@ -207,6 +207,7 @@ func PrepareExecrules(
 		PidLimit:       int64(utils.RunCfg.Limits.PIDLimit),
 		Timeoutsec:     uint32(utils.RunCfg.Limits.TimeoutSec),
 		ReadOnlyRootfs: utils.RunCfg.Limits.RORootFS,
+		LogLimitKB:     uint32(utils.RunCfg.Limits.LogLimitKB),
 	}
 
 	return nil, execRules
