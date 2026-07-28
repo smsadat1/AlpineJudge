@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -190,12 +189,12 @@ func (m *S3Manager) DownloadDirFromS3(
 			// Extract relative subpath: e.g. "s3prefix/001/in.txt" -> "001/in.txt"
 			relPath := strings.TrimPrefix(*obj.Key, keyPrefix)
 
-			// Construct full local path on disk: "/tmp/testsub001/ts001/001/in.txt"
+			// Construct full local path on disk: "/tmp/testsub001/ts001/001in.txt"
 			localPath := filepath.Join(ofileDir, relPath)
 
 			// Filter for in.txt and out.txt
-			fileName := path.Base(*obj.Key)
-			if fileName == "in.txt" || fileName == "out.txt" {
+			if strings.HasSuffix(*obj.Key, "in.txt") ||
+				strings.HasSuffix(*obj.Key, "out.txt") {
 				if err := m.DownloadFileFromS3(ctx, bucket, *obj.Key, localPath); err != nil {
 					return err
 				}
