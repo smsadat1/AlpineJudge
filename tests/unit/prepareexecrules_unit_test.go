@@ -1,6 +1,7 @@
 package unit_test
 
 import (
+	"assert"
 	"context"
 	"dispatcher"
 	"local/runner/executor"
@@ -55,29 +56,34 @@ func Test_PrepareExecrules(t *testing.T) {
 		TestsetS3Key:   testTestsetS3key,
 		Testset:        testTestsetID,
 		TestsetVersion: testTestsetVer,
+		Image:          "ghcr.io/smsadat1/alpinejudge/gcc:test",
 	}
 
-	executor.HostSrcFilePath = "../artifacts/main.cc"
+	executor.HostSrcFilePath = "/tmp/" + testJobSpec.SubmissionID + "/main.cc"
 	executor.HostTestFilePath = "../artifacts/ts001"
-	err, execrules := executor.PrepareExecrules(ctx, *tf.S3m, testJobSpec, true)
+
+	// create temp location
+	if err := os.MkdirAll("/tmp/"+testJobSpec.SubmissionID, 0777); err != nil {
+		t.Fatalf("Failed creating temp lcocation for test: %v", err)
+	}
+
+	err, execrules := executor.PrepareExecrules(ctx, *tf.S3m, testJobSpec, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expectedImage := "ghcr.io/smsadat1/ajgcc:v0.1.0"
+	expectedImage := "ghcr.io/smsadat1/alpinejudge/gcc:test"
 	expectedCompileArgs := []string{
-		"/usr/bin/g++", "-std=c++20", "-Wall", "-Wextra", "-o", "/tmp/main", "/workspace/main.cc",
+		"g++", "-std=c++20", "-Wall", "-Wextra", "-o", "/tmp/main", "/workspace/main.cc",
 	}
 	expectedRunArgs := []string{"/tmp/main"}
 	expectedCodePathHost := executor.HostSrcFilePath
 	expectedCodePathContainer := "/workspace/main.cc"
 	expectedTestsetPathHost := executor.HostTestFilePath
-	expectedTestsetPathContainer := "/workspace/" + testTestsetID + "/" + testTestsetVer + "/"
+	expectedTestsetPathContainer := "/workspace/"
 
 	// Assert using clean struct properties
-	if execrules.Image != expectedImage {
-		t.Errorf("Expected %s, got %s", execrules.Image, expectedImage)
-	}
+	assert.String(t, expectedImage, execrules.Image)
 
 	if !slices.Equal(execrules.CompileArgs, expectedCompileArgs) {
 		t.Error("Compilation args mismatched")
@@ -87,25 +93,11 @@ func Test_PrepareExecrules(t *testing.T) {
 		t.Error("Runtime args mismatched")
 	}
 
-	if execrules.CodePathHost != expectedCodePathHost {
-		t.Errorf("Expected %s, got %s", execrules.CodePathHost, expectedCodePathHost)
-	}
-
-	if execrules.CodePathContainer != expectedCodePathContainer {
-		t.Errorf("Expected %s, got %s", execrules.CodePathContainer, expectedCodePathContainer)
-	}
-
-	if execrules.TestsetPathContainer != expectedTestsetPathContainer {
-		t.Errorf("Expected %s, got %s", execrules.TestsetPathContainer, expectedTestsetPathContainer)
-	}
-
-	if execrules.TestsetPathHost != expectedTestsetPathHost {
-		t.Errorf("Expected %s, got %s", execrules.TestsetPathHost, expectedTestsetPathHost)
-	}
-
-	if execrules.MemoryLimitMB != utils.RunCfg.Limits.MemoryLimitMB {
-		t.Errorf("Expected %d, got %d", execrules.MemoryLimitMB, utils.RunCfg.Limits.MemoryLimitMB)
-	}
+	assert.String(t, expectedCodePathHost, execrules.CodePathHost)
+	assert.String(t, expectedCodePathContainer, execrules.CodePathContainer)
+	assert.String(t, expectedTestsetPathContainer, execrules.TestsetPathContainer)
+	assert.String(t, expectedTestsetPathHost, execrules.TestsetPathHost)
+	assert.Uint64(t, utils.RunCfg.Limits.MemoryLimitMB, execrules.MemoryLimitMB)
 
 	if execrules.CpuQuota != float64(utils.RunCfg.Limits.CPUQuota) {
 		t.Errorf("Expected %f, got %f", execrules.CpuQuota, float64(utils.RunCfg.Limits.CPUQuota))
