@@ -4,25 +4,30 @@ package executor
 import (
 	"encoding/json"
 	"log"
-	"path/filepath"
 	"utils"
 
 	oci "github.com/containerd/containerd/oci"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
+func Build_ociSpecOpts() []oci.SpecOpts {
 
-	memoryBytes := uint64(rules.MemoryLimitMB * 1024 * 1024)
+	cpuQuota := float64(utils.RunCfg.Limits.CPUQuota)
+	memLimitMB := utils.RunCfg.Limits.MemoryLimitMB
+	pidLimit := utils.RunCfg.Limits.PIDLimit
+	nnp := utils.RunCfg.Limits.NoNewPrivs
+	rroRootfs := utils.RunCfg.Limits.RORootFS
+
+	memoryBytes := uint64(memLimitMB * 1024 * 1024)
 	period := uint64(100000) // 100 ms period
-	quota := int64(rules.CpuQuota * float64(period))
+	quota := int64(cpuQuota * float64(period))
 
-	absCodeHost, _ := filepath.Abs(rules.CodePathHost)
-	absExecSpecHost, _ := filepath.Abs(rules.ExecutionSpecPathHost)
-	absSocketHost, _ := filepath.Abs(rules.HostEventSocket)
-	absTestsetHost, _ := filepath.Abs(rules.TestsetPathHost)
+	// absCodeHost, _ := filepath.Abs(rules.CodePathHost)
+	// absExecSpecHost, _ := filepath.Abs(rules.ExecutionSpecPathHost)
+	// absSocketHost, _ := filepath.Abs(rules.HostEventSocket)
+	// absTestsetHost, _ := filepath.Abs(rules.TestsetPathHost)
 
-	log.Printf("S: %v | T: %v | C: %v | E: %v", absSocketHost, absTestsetHost, absCodeHost, absExecSpecHost)
+	// log.Printf("S: %v | T: %v | C: %v | E: %v", absSocketHost, absTestsetHost, absCodeHost, absExecSpecHost)
 
 	opts := []oci.SpecOpts{
 		// start with default Linux specs or else OCI spec fails
@@ -32,7 +37,7 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 		oci.WithMemoryLimit(memoryBytes),
 		// fix memory swap so Linux doesn't abuse swap to give extra memory without limits
 		oci.WithMemorySwap(int64(memoryBytes)),
-		oci.WithPidsLimit(rules.PidLimit),
+		oci.WithPidsLimit(pidLimit),
 		oci.WithCPUCFS(quota, period),
 
 		// mount file
@@ -61,11 +66,11 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 		}),
 	}
 
-	if rules.NoNewPrivilege {
+	if nnp {
 		opts = append(opts, oci.WithNoNewPrivileges)
 	}
 
-	if rules.ReadOnlyRootfs {
+	if rroRootfs {
 		opts = append(opts, oci.WithRootFSReadonly())
 	}
 
@@ -78,7 +83,7 @@ func Build_ociSpecOpts(rules utils.ExecRules) []oci.SpecOpts {
 func Build_agentExecSpec(rules utils.ExecRules) (error, []byte) {
 
 	agentSpec := utils.AgentExecSpec{
-		SubmissionID: rules.SubmissionID,
+		SubmissionID: "",
 		LogLimitKB:   rules.LogLimitKB,
 		TimeoutSec:   rules.Timeoutsec,
 		TestSetPath:  "/workspace/" + rules.TestID + "/",
