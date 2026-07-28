@@ -67,6 +67,8 @@ type AgentEventSpec struct {
 	Details  string
 }
 
+// ================================ UESP ================================\
+
 /*
 UESP (Unified Event Streaming Protocol) defines the communication
 protocol between the in-container agent and the Execution Manager
@@ -82,6 +84,15 @@ type Event struct {
 	Stderr  string
 	Details string
 }
+
+// RMQ specific event strcuture | eventRouter() seperates Event into RMQ & S3 payload
+type RMQData struct {
+	Type    string
+	Status  string
+	Details string
+}
+
+// ========================================================================
 
 // stream real time logs from container
 func StreamContainerLogsToRMQ(
