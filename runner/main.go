@@ -1,10 +1,3 @@
-/*
-*  Check the system
-*  Connect to RMQ -> initiate RMQ consumer
-*  Pull images & cache
-*  Start pulling job specs from RMQ global queue
- */
-
 package runner
 
 import (
@@ -13,13 +6,15 @@ import (
 	"local/runner/scheduler"
 	"log"
 	"os"
-	"shared"
+	"sync/atomic"
 	"time"
-	"utils"
 
 	containerd "github.com/containerd/containerd"
 	namespaces "github.com/containerd/containerd/v2/pkg/namespaces"
 	amqp "github.com/rabbitmq/amqp091-go"
+
+	"shared"
+	"utils"
 )
 
 func main() {
@@ -28,7 +23,7 @@ func main() {
 	defer cancel()
 
 	log.Println("Loading configurations...")
-	if err := utils.LoadRunnerConfigs("config.example.yaml"); err != nil {
+	if err := utils.LoadRunnerConfigs("/etc/alpinejudge/runner.yaml"); err != nil {
 		log.Fatalf("Fatal: Configuration failed to load: %v", err)
 	}
 
@@ -51,6 +46,10 @@ func main() {
 		log.Fatalf("Fatal: S3 Storage initialization aborted: %v", err)
 	}
 
+	sysMetrics := make(chan utils.SystemMetrics, 15)
+	localQueue := make(chan amqp.Delivery, 100)
+	containerQueue := scheduler.InitContainerQueue()
+
 	log.Println("Initializing containerd client socket...")
 	client, err := containerd.New("/run/containerd/containerd.sock")
 	if err != nil {
@@ -60,9 +59,6 @@ func main() {
 
 	log.Println("Creating container namespace...")
 	cCtx := namespaces.WithNamespace(ctx, "alpine_judge")
-
-	sysMetrics := make(chan utils.SystemMetrics, 15)
-	localQueue := make(chan amqp.Delivery, 100)
 
 	log.Println("Firing background workers (SystemMonitor & RabbitMQ consumer)...")
 	go func() {
@@ -77,12 +73,42 @@ func main() {
 		}
 	}()
 
+	var (
+		currDecisions   utils.RADSDecision
+		activeTasks     int32 // Atomic counter for active jobs running
+		targetWarmCount int32 // Target warm containers to maintain
+	)
+
+	/*
+		Warm Container Producer Loop
+		Maintains dynamic pool size determined by RADScheduler decisions
+	*/
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// If warm pool size is below target budget, create a pre-warmed container
+				// TODO: add a channel length check or atomic count tracker for containerQueue
+				// _ := atomic.LoadInt32(&targetWarmCount) (use this for that)
+
+				warmContainer, err := executor.CreateWarmContainer(cCtx, client)
+				if err != nil {
+					log.Printf("Warm Pool Error: failed to create pre-warmed container: %v", err)
+					time.Sleep(1 * time.Second)
+					continue
+				}
+
+				// Push into dynamic container queue
+				containerQueue.In <- warmContainer
+			}
+		}
+	}()
+
 	log.Println("Runner Daemon successfully initialized and monitoring...")
 
-	// main orchestration Loop
-	var currentDecisions utils.RADSDecision
-	runningContainers := 0
-
+	// Main orchestration loop
 	for {
 		select {
 		case <-ctx.Done():
@@ -90,9 +116,14 @@ func main() {
 			return
 
 		case sysm := <-sysMetrics:
-			currentDecisions := scheduler.RADScheduler(sysm.AvailableMemoryMB, sysm.CPUCoreCount, runningContainers)
+			currentActive := int(atomic.LoadInt32(&activeTasks))
+			currDecisions = scheduler.RADScheduler(sysm.AvailableMemoryMB, sysm.CPUCoreCount, currentActive) // assigned to outer variable
+
+			// Update target warm pool size dynamically based on scheduler capacity
+			atomic.StoreInt32(&targetWarmCount, int32(currDecisions.AvailableSlots))
+
 			log.Printf("Resource Sync -> Slots Available: %d | Idle: %f | Running Tasks: %d\n",
-				currentDecisions.AvailableSlots, currentDecisions.IdleSlots, runningContainers)
+				currDecisions.AvailableSlots, currDecisions.IdleSlots, currentActive)
 
 		case msg, ok := <-localQueue:
 			if !ok {
@@ -100,34 +131,46 @@ func main() {
 				return
 			}
 
-			// decide if physical runtime slots left based on the last telemetry check
-			if runningContainers >= currentDecisions.AvailableSlots || currentDecisions.IdleSlots <= 0 {
-				log.Printf("Backpressure Warning: Maximum scheduling slots reached (%d/%d). Rejecting/Re-queuing event.",
-					runningContainers, currentDecisions.AvailableSlots)
+			currActive := atomic.LoadInt32(&activeTasks)
+			// Backpressue check
+			if int(currActive) >= currDecisions.AvailableSlots || currDecisions.IdleSlots <= 0 {
+				log.Printf("Backpressure Warning: Maximum scheduling slots reached (%d/%d). Re-queuing.",
+					currActive, currDecisions.AvailableSlots)
 
-				// Nack the message and throw it back onto RabbitMQ so another worker can take it
 				_ = msg.Nack(false, true)
 				continue
 			}
 
-			// while there's slot budget
-			runningContainers++
-			currentDecisions.IdleSlots--
+			// Reserve slot atomically
+			atomic.AddInt32(&activeTasks, 1)
 
 			go func(delivery amqp.Delivery) {
-				// safely decrement running tracker when container terminates execution
-				defer func() {
-					runningContainers--
-				}()
+				// atomic decrement
+				defer atomic.AddInt32(&activeTasks, -1)
+				log.Printf("Allocating slot. Fetching pre-warmed container for message ID: %s\n", delivery.MessageId)
 
-				log.Printf("Allocating slot. Launching isolation runtime for message ID: %s\n", delivery.MessageId)
+				var warmCont containerd.Container
+				select {
+				case warmCont = <-containerQueue.Out:
+				case <-time.After(3 * time.Second):
+					log.Println("Warm pool starved, falling back to on-demand creation...")
+				}
 
 				jobspec, err := utils.ProcessJobSpec(ctx, msg)
-				result, err := executor.OrchestrateSubm(cCtx, client, *s3m, jobspec, *rmqm, false)
-				_ = result
 				if err != nil {
-					log.Printf("Execution Failure: Container run errored out: %v", err)
-					_ = delivery.Nack(false, false) // drop bad tasks (add DLQ here)
+					log.Printf("Jobspec Parse Error: %v", err)
+					_ = delivery.Nack(false, false)
+					return
+				}
+
+				// Execute using warm container or fallback to on-demand
+				contInfo, err := executor.OrchestrateSubm(ctx, warmCont, *s3m, jobspec, *rmqm, false)
+
+				log.Printf("Container Info -> SubmissionID: %v | Status: %v", contInfo.SubmissionId, contInfo.Status)
+
+				if err != nil {
+					log.Printf("Execution Failure: %v", err)
+					_ = delivery.Nack(false, false)
 					return
 				}
 

@@ -18,7 +18,7 @@ type SchedulerConfig struct {
 
 type LimitsConfig struct {
 	MemoryLimitMB uint64 `yaml:"memory_limit_mb"`
-	PIDLimit      uint16 `yaml:"pid_limit"`
+	PIDLimit      int64  `yaml:"pid_limit"`
 	CPUQuota      uint16 `yaml:"cpu_quota"`
 	NoNewPrivs    bool   `yaml:"no_new_privileges"`
 	RORootFS      bool   `yaml:"readonly_rootfs"`
