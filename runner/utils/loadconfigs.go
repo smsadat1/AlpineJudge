@@ -23,6 +23,7 @@ type LimitsConfig struct {
 	NoNewPrivs    bool   `yaml:"no_new_privileges"`
 	RORootFS      bool   `yaml:"readonly_rootfs"`
 	TimeoutSec    uint64 `yaml:"timeout_sec"`
+	LogLimitKB    uint64 `yaml:"log_limit_kb"`
 }
 
 type RunnerConfig struct {
