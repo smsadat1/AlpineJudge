@@ -1,6 +1,6 @@
 package main
 
-import ajagent "ajagent/internal"
+import ajagent "ajagent/pkg"
 
 func main() {
 	ajagent.RunnerAgent()

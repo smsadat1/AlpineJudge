@@ -5,7 +5,7 @@
 	{
 	    for (int i = 0; i < 1000000; i++)
 	    {
-	        std::cout << "LOL ";
+	        std::cout << "LOL " << std::endl;
 	    }
 	    return 0;
 	}
