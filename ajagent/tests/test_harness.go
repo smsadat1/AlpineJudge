@@ -111,8 +111,8 @@ func NewTestHarness(t *testing.T, testcode string) *TestHarness {
 	t.Helper()
 
 	artifactsDir := "artifacts"
-	sockPath := "/tmp/agent.sock"
-	// sockPath := filepath.Join(artifactsDir, "agent.sock")
+	// unique sockets to avoid collisions
+	sockPath := filepath.Join(t.TempDir(), "agent.sock")
 	testsetPath := filepath.Join(artifactsDir, "ts001")
 
 	// set test env vars
