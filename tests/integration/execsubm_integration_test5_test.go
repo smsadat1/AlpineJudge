@@ -93,6 +93,15 @@ func Test_Execsubm_integration_test_MLE(t *testing.T) {
 		// t.Fatal("Timed out waiting for live status message on RMQ")
 	}
 
-	t.Logf("\nResult =======\nSubmissionID: %v\nLanguage: %v\nVersion: %v\nElapsed time: %vms\nStatus: %v\nDetail: %v\n",
-		result.SubmissionId, result.Language, result.Version, result.Interval, result.Status, result.Details)
+	t.Logf(`Container lifecycle data
+			SubmissionID: %v
+			Language: %v
+			Version: %v
+			Elapsed time: %vms
+			Status: %v
+			StatusInfo: %v
+			Stderr: %v
+			Stdout: %v`,
+		result.SubmissionId, result.Language, result.Version, result.Interval,
+		result.Status, result.StatusInfo, result.ContainerStderr, result.ContainerStdout)
 }

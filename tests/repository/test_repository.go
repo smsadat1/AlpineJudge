@@ -22,14 +22,27 @@ func NewTestRepository(t *testing.T) *TestRepository {
 	t.Helper()
 
 	tjs := shared.JobSpec{
-		Language:       "cpp",
-		Version:        "c++17",
+		Language: "cpp",
+		Version:  "c++17",
+		Image:    "ghcr.io/smsadat1/alpinejudge/gcc:test",
+		Source: `
+		#include <iostream>
+
+		int main() {
+			
+		    int a, b = 0;
+		    std::cin >> a >> b;
+		    std::cout << a + b;
+			
+		    return 0;   
+		}`,
 		SubmissionID:   "testsub001",
 		Bucket:         "testbucket",
 		SrcCodeS3Key:   "submissions/testsub001/main.cpp",
 		TestsetS3Key:   "testsets/ts001/",
 		Testset:        "ts001",
 		TestsetVersion: "v1",
+		EventQueue:     "queue-001",
 	}
 
 	tss := dispatcher.SubmissionSpec{
@@ -47,7 +60,7 @@ func NewTestRepository(t *testing.T) *TestRepository {
 		SubmissionID: "testsub001",
 		ContainerID:  "testcontainer",
 		Image:        "aplinejudge/gcc:test",
-		CompileArgs:  []string{"/usr/local/bin/g++", "-Wall", "-Wextra", "-o", "/tmp/main", "/workspace/main.cpp"},
+		CompileArgs:  []string{"g++", "-Wall", "-Wextra", "-o", "/tmp/main", "/workspace/main.cpp"},
 		RunArgs:      []string{"/tmp/main"},
 		TestID:       "ts001",
 
@@ -111,12 +124,12 @@ func (tr *TestRepository) NewTestOCISpecOpts(t *testing.T, testRules utils.ExecR
 		oci.WithMounts([]specs.Mount{
 
 			// DEBUG only
-			// {
-			// 	Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
-			// 	Destination: "/usr/bin/ajagent",
-			// 	Type:        "bind",
-			// 	Options:     []string{"bind", "ro"},
-			// },
+			{
+				Source:      "/home/pancake/Projects/alpinejudge/runner/ajagent/cmd/ajagent",
+				Destination: "/usr/bin/ajagent",
+				Type:        "bind",
+				Options:     []string{"bind", "ro"},
+			},
 
 			{
 				// writable /tmp for temp objects

@@ -42,10 +42,10 @@ func NewTestFactory(t *testing.T) *TestFactory {
 	t.Setenv("TEST_S3_URL", "http://localhost:9000")
 	t.Setenv("TEST_S3_USERNAME", "minioadmin")
 	t.Setenv("TEST_S3_PASSWORD", "minioadminpassword")
-	t.Setenv("TEST_S3_BUCKET_NAME", "ajbucket-test-e2e-d")
+	t.Setenv("TEST_S3_BUCKET_NAME", "testbucket")
 	t.Setenv("TEST_S3_REGION_NAME", "us-east-1")
 	t.Setenv("TEST_RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-	t.Setenv("RABBITMQ_QUEUE_NAME", "job-queue-runner1")
+	t.Setenv("RABBITMQ_QUEUE_NAME", "queue-001")
 
 	s3Bucket := os.Getenv("TEST_S3_BUCKET_NAME")
 	s3Region := os.Getenv("TEST_S3_REGION_NAME")

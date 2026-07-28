@@ -4,6 +4,7 @@ import (
 	"assert"
 	"context"
 	"encoding/json"
+	"fmt"
 	"local/runner/executor"
 	"local/testrunner/factory"
 	"local/testrunner/repository"
@@ -57,6 +58,7 @@ func Test_Execsubm_integration_test_OK(t *testing.T) {
 
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
+		counter := 0
 		for {
 			select {
 			case <-ctx.Done():
@@ -67,10 +69,12 @@ func Test_Execsubm_integration_test_OK(t *testing.T) {
 				}
 				_ = delivery.Ack(false)
 
-				var testEventStream utils.AgentEventSpec
+				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 				log.Printf("%v | %v", testEventStream.Status, testEventStream.Details)
-				assert.String(t, testEventStream.EvenType, "ACCEPT")
+
+				counter++
+				assert.String(t, testEventStream.Status, fmt.Sprintf("Running test %v", counter))
 
 				select {
 				case collectMesg <- string(delivery.Body):
@@ -93,7 +97,16 @@ func Test_Execsubm_integration_test_OK(t *testing.T) {
 		t.Fatal("Timed out waiting for live status message on RMQ")
 	}
 
-	t.Logf("\nResult =======\nSubmissionID: %v\nLanguage: %v\nVersion: %v\nElapsed time: %vms\nStatus: %v\nDetail: %v\n",
-		result.SubmissionId, result.Language, result.Version, result.Interval, result.Status, result.Details)
+	t.Logf(`Container lifecycle data
+			SubmissionID: %v
+			Language: %v
+			Version: %v
+			Elapsed time: %vms
+			Status: %v
+			StatusInfo: %v
+			Stderr: %v
+			Stdout: %v`,
+		result.SubmissionId, result.Language, result.Version,
+		result.Interval, result.Status, result.StatusInfo, result.ContainerStderr, result.ContainerStdout)
 
 }

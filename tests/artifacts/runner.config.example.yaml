@@ -19,3 +19,4 @@ limits:
   no_new_privileges: true
   readonly_rootfs: true
   timeout_sec: 300
+  log_limit_kb: 512
