@@ -17,35 +17,7 @@ import (
 
 	containerd "github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-// publish rmq specific event payload directly to RMQ in real time
-func routeToRMQ(sockCtx context.Context, queuename string, rmqm shared.RMQManager, payload []byte) {
-
-	var rmqpayload utils.RMQData
-	var msg amqp.Publishing
-	json.Unmarshal(payload, &rmqpayload)
-	rmqdata, err := json.Marshal(rmqpayload)
-	if err != nil {
-		msg = amqp.Publishing{
-			ContentType:  "application/json",
-			DeliveryMode: amqp.Persistent,
-			Timestamp:    time.Now(),
-		}
-		log.Printf("Failed to marshal RMQ payload %v", err)
-	}
-	msg = amqp.Publishing{
-		ContentType:  "application/json",
-		DeliveryMode: amqp.Persistent,
-		Timestamp:    time.Now(),
-		Body:         []byte(rmqdata),
-	}
-
-	if err := rmqm.Publish(sockCtx, queuename, msg); err != nil {
-		log.Printf("Failed to stream event to RMQ: %v", err)
-	}
-}
 
 func ExecSubm(
 	ctx context.Context,
@@ -70,8 +42,8 @@ func ExecSubm(
 	_ = "submissions/" + jobspec.SubmissionID + "/"
 	var stdoutWriter bytes.Buffer
 	var stderrWrite bytes.Buffer
-	// var stdoutReader io.Reader
-	// var stderrReader io.Reader
+
+	start := time.Now()
 
 	// Setup unix socket
 	listener, err := net.Listen("unix", rules.HostEventSocket)
@@ -110,18 +82,25 @@ func ExecSubm(
 					log.Printf("Failed to scan streamed data: %v", err)
 					return
 				}
+				streamStart := time.Now()
 				for scanner.Scan() {
 					eventPayload := scanner.Bytes()
 
 					// pass Type, Status & Details in RMQ
 					routeToRMQ(sockCtx, rules.EventQueueName, rmqm, eventPayload)
 
-					// upload stdout & stderr in S3
-					var forS3 utils.Event
-					json.Unmarshal(eventPayload, &forS3)
-					s3m.UploadFileToS3(sockCtx, "submissions/"+jobspec.SubmissionID+"/stdout.log", strings.NewReader(forS3.Stdout))
-					s3m.UploadFileToS3(sockCtx, "submissions/"+jobspec.SubmissionID+"/stderr.log", strings.NewReader(forS3.Stderr))
+					// Process S3 uploads in a goroutine so it doesn't block scanner.Scan()
+					payloadCopy := make([]byte, len(eventPayload))
+					go func(data []byte) {
+						var forS3 utils.Event
+						if err := json.Unmarshal(data, &forS3); err == nil {
+							s3m.UploadFileToS3(sockCtx, "submissions/"+jobspec.SubmissionID+"/stdout.log", strings.NewReader(forS3.Stdout))
+							s3m.UploadFileToS3(sockCtx, "submissions/"+jobspec.SubmissionID+"/stderr.log", strings.NewReader(forS3.Stderr))
+						}
+					}(payloadCopy)
 				}
+				streamInterval := time.Since(streamStart).Milliseconds()
+				fmt.Printf("\nSubmission execution interval: %vms\n", streamInterval)
 
 			}(conn)
 		}
@@ -155,8 +134,6 @@ func ExecSubm(
 		contInfo.StatusInfo = "Failed to obtain wait status channel"
 		return contInfo
 	}
-
-	start := time.Now()
 
 	if err := task.Start(ctx); err != nil {
 

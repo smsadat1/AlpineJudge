@@ -13,7 +13,7 @@ import (
 func CreateWarmContainer(ctx context.Context, client *containerd.Client) (containerd.Container, error) {
 
 	// Pull the container image & build OCI specs
-	alpineJudgeMasterImage := "ghcr.io/smsada1/alpinejudge/master:test"
+	alpineJudgeMasterImage := "ghcr.io/smsadat1/alpinejudge/master:test"
 	image := getContainerImage(alpineJudgeMasterImage, client, ctx)
 
 	var opts []oci.SpecOpts
