@@ -1,4 +1,4 @@
-package executor
+package internal
 
 import (
 	"bufio"
@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"shared"
 	"strings"
 	"syscall"
@@ -16,12 +15,10 @@ import (
 	"utils"
 
 	containerd "github.com/containerd/containerd"
-	"github.com/containerd/containerd/cio"
 )
 
-func ExecSubm(
+func (wc *WarmContainer) execSubm(
 	ctx context.Context,
-	container containerd.Container,
 	rules utils.ExecRules,
 	jobspec shared.JobSpec,
 	rmqm shared.RMQManager,
@@ -40,20 +37,8 @@ func ExecSubm(
 	}
 
 	_ = "submissions/" + jobspec.SubmissionID + "/"
-	var stdoutWriter bytes.Buffer
-	var stderrWrite bytes.Buffer
 
 	start := time.Now()
-
-	// Setup unix socket
-	listener, err := net.Listen("unix", rules.HostEventSocket)
-	if err != nil {
-		log.Fatalf("Failed to create socket listener: %v", err)
-	}
-	defer func() {
-		_ = listener.Close()
-		_ = os.RemoveAll(rules.HostEventSocket)
-	}()
 
 	// Context to gracefully shut down socket listener worker when function returns
 	sockCtx, sockCancel := context.WithCancel(ctx)
@@ -62,17 +47,6 @@ func ExecSubm(
 	// Goroutine: Accepts incoming socket connections from container & publishes to RabbitMQ in real time
 	go func() {
 		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				select {
-				case <-sockCtx.Done():
-					return // Normal exit when task finishes
-				default:
-					log.Printf("Socket accept error: %v", err)
-					return
-				}
-			}
-
 			// Handle stream from this connection
 			go func(c net.Conn) {
 				defer c.Close()
@@ -85,6 +59,10 @@ func ExecSubm(
 				streamStart := time.Now()
 				for scanner.Scan() {
 					eventPayload := scanner.Bytes()
+
+					var eventdata utils.Event
+					json.Unmarshal(eventPayload, &eventdata)
+					fmt.Printf("\nEvent: %v\n", eventdata)
 
 					// pass Type, Status & Details in RMQ
 					routeToRMQ(sockCtx, rules.EventQueueName, rmqm, eventPayload)
@@ -102,48 +80,9 @@ func ExecSubm(
 				streamInterval := time.Since(streamStart).Milliseconds()
 				fmt.Printf("\nSubmission execution interval: %vms\n", streamInterval)
 
-			}(conn)
+			}(wc.Conn)
 		}
 	}()
-
-	task, err := container.NewTask(
-		ctx,
-		cio.NewCreator(cio.WithStreams(nil, &stdoutWriter, &stderrWrite)),
-	)
-
-	if err != nil {
-
-		log.Printf("NewTask RPC error: %v", err)
-
-		contInfo.Interval = 0
-		contInfo.Status = utils.VerdictIE
-		contInfo.StatusInfo = "Failed to create container task"
-		return contInfo
-	}
-
-	defer task.Delete(ctx)
-
-	// obtain wait channel before task.Start()
-	statusCode, err := task.Wait(ctx)
-	if err != nil {
-
-		log.Printf("NewTask RPC error: %v", err)
-
-		contInfo.Interval = 0
-		contInfo.Status = utils.VerdictIE
-		contInfo.StatusInfo = "Failed to obtain wait status channel"
-		return contInfo
-	}
-
-	if err := task.Start(ctx); err != nil {
-
-		log.Printf("NewTask RPC error: %v", err)
-
-		contInfo.Interval = 0
-		contInfo.Status = utils.VerdictIE
-		contInfo.StatusInfo = "Failed to start container task"
-		return contInfo
-	}
 
 	// Handle timeouts & exit
 	timeoutDuration := time.Duration(rules.Timeoutsec)*time.Second + 5 // extra 5 seconds at container level
@@ -151,8 +90,10 @@ func ExecSubm(
 	defer cancel()
 
 	var status containerd.ExitStatus
+	var stdoutWriter bytes.Buffer
+	var stderrWrite bytes.Buffer
 	select {
-	case status = <-statusCode:
+	case status = <-wc.ContStatus:
 
 		// Process completed naturally within timeout limit
 		elapsedMS := time.Since(start).Milliseconds()
@@ -179,7 +120,7 @@ func ExecSubm(
 		contInfo.ContainerStdout = stdoutWriter.String()
 
 		log.Print("Task timedout. Sending SIGKILL to container...")
-		_ = task.Kill(ctx, syscall.SIGKILL)
+		_ = wc.Task.Kill(ctx, syscall.SIGKILL)
 	}
 
 	return contInfo

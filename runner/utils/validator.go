@@ -23,7 +23,7 @@ func ProcessJobSpec(ctx context.Context, msg amqp.Delivery) (shared.JobSpec, err
 		return shared.JobSpec{}, err
 	}
 
-	log.Printf("Processed job spec: %v\n", jobspec)
+	// log.Printf("Processed job spec: %v\n", jobspec)
 
 	if msg.Acknowledger != nil {
 		err = msg.Ack(false)

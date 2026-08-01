@@ -7,8 +7,18 @@ import (
 	"log"
 	"shared"
 
+	"github.com/containerd/containerd"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+type EngineDeps struct {
+	Client    *containerd.Client
+	Rmq       *shared.RMQManager
+	S3        *shared.S3Manager
+	JobQueue  string
+	SSEQueue  string
+	Namespace string
+}
 
 type ExecRules struct {
 	// system
@@ -21,15 +31,7 @@ type ExecRules struct {
 	TestID       string
 
 	// environment
-	CodePathHost               string // oci | ok
-	CodePathContainer          string // oci | ok
-	TestsetPathHost            string // oci | ok
-	TestsetPathContainer       string // oci | ok
-	ExecutionSpecPathHost      string
-	ExecutionSpecPathContainer string
-	HostEventSocket            string
-	ContainerEventSocket       string
-	EventQueueName             string
+	EventQueueName string
 
 	Env map[string]string // only "CONFIG_PATH=/workspace/execspec.json" | ok
 
