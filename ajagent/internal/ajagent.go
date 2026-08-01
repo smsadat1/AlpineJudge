@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -26,21 +27,21 @@ func RunnerAgent() {
 	}
 	defer streamConn.Close()
 
-	// 2. Find & load execution spec JSON
-	configPath := os.Getenv("CONFIG_PATH")
-	jsonData, err := os.ReadFile(configPath)
+	// 2. Get instruction data over unix socket
+	reader := bufio.NewReader(streamConn)
+	payload, err := reader.ReadBytes('\n') // read till delimiter
 	if err != nil {
 		sendEvent(
 			streamConn,
 			FATAL, verdictIE, "", "",
-			fmt.Sprintf("Failed to load execspec from '%s': %v\n", configPath, err),
+			fmt.Sprintf("Failed to recieved execspec: %v\n", err),
 		)
 		return
 	}
 
-	// 3. Unmarshal from JSON to Spec
+	// 3. Unmrashal execSpec data
 	var execSpec utils.AgentExecSpec
-	if err := json.Unmarshal(jsonData, &execSpec); err != nil {
+	if err := json.Unmarshal(payload, &execSpec); err != nil {
 		sendEvent(
 			streamConn,
 			FATAL, verdictIE, "", "",
