@@ -12,7 +12,18 @@ import (
 	"utils"
 )
 
-// in-container agent to run execution
+/*
+ajagent is the "in-container agent" mentioned everywhere in the source.
+
+It goes online during warm container creation phase, stays connected to socket to recieve instruction payload.
+Since socket needs to be open from very first stage at container creation phase.
+Every containers get assigned with slotID and gets dedicated socket right at that phase.
+ajagent connects to that socket injected as env var from OCI specOpts during container creation.
+The instruction payload (AgentExecSpec) contains submitted code path and relevant testset path with Compile & Runtime args.
+ajagent just reads the instruction payload and follows it.
+
+All the containers get /tmp/ruuner of host mounted as /workspace. But only touches relevant code submissions and testsets decided upstream.
+*/
 func RunnerAgent() {
 
 	// 1. Find & connect to event stream socket
@@ -39,7 +50,7 @@ func RunnerAgent() {
 		return
 	}
 
-	// 3. Unmrashal execSpec data
+	// 3. Unmrashal execSpec data (the instruction payload)
 	var execSpec utils.AgentExecSpec
 	if err := json.Unmarshal(payload, &execSpec); err != nil {
 		sendEvent(
@@ -50,7 +61,7 @@ func RunnerAgent() {
 		return
 	}
 
-	// 4. Compilation stage (if any)
+	// 4. Compilation stage (if any | args supplied from instruction payload over unix socket)
 	if len(execSpec.CompileArgs) > 0 {
 		cmd := exec.Command(execSpec.CompileArgs[0], execSpec.CompileArgs[1:]...)
 		stdout := &LimitExceededWriter{limit: int64(execSpec.LogLimitKB) * 1000}
@@ -69,11 +80,9 @@ func RunnerAgent() {
 		}
 	}
 
-	// 5. Find & Read given testset directory (Priority: env var TESTSET_PATH -> fallback to execSpec.TestSetPath)
-	testsetPath := os.Getenv("TESTSET_PATH")
-	if testsetPath == "" {
-		testsetPath = execSpec.TestSetPath
-	}
+	// 5. Find & Read given testset directory (recieved from instruction payload over unix socket)
+	testsetPath := execSpec.TestSetPath
+
 	testCount := 0
 
 	for i := 1; ; i++ {

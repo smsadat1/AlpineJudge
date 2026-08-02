@@ -117,7 +117,6 @@ func NewTestHarness(t *testing.T, testcode string) *TestHarness {
 
 	// set test env vars
 	t.Setenv("STREAM_SOCKET_PATH", sockPath)
-	t.Setenv("TESTSET_PATH", testsetPath)
 
 	if err := os.MkdirAll(testsetPath, 0755); err != nil {
 		t.Fatalf("Harness: failed to create artifacts dir: %v", err)

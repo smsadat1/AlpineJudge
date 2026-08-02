@@ -10,8 +10,8 @@ import (
 )
 
 func Test_RunnerAgent_Integration_Ok(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
 	th := NewTestHarness(t, CodeOk)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -22,6 +22,11 @@ func Test_RunnerAgent_Integration_Ok(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)
@@ -42,9 +47,11 @@ func Test_RunnerAgent_Integration_Ok(t *testing.T) {
 }
 
 func Test_RunnerAgent_Integration_HFE(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec2.json")
 	th := NewTestHarness(t, CodeWrong)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
+
+	th.TestSpec.HaltOnFirstError = true
 
 	go func() {
 		defer close(testServerDone)
@@ -54,6 +61,11 @@ func Test_RunnerAgent_Integration_HFE(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)
@@ -74,8 +86,8 @@ func Test_RunnerAgent_Integration_HFE(t *testing.T) {
 }
 
 func Test_RunnerAgent_Integration_Abort(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
 	th := NewTestHarness(t, CodeAbrt)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -86,6 +98,11 @@ func Test_RunnerAgent_Integration_Abort(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)
@@ -104,8 +121,8 @@ func Test_RunnerAgent_Integration_Abort(t *testing.T) {
 }
 
 func Test_RunnerAgent_Integration_FPE(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
 	th := NewTestHarness(t, CodeDivByZero)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -116,6 +133,11 @@ func Test_RunnerAgent_Integration_FPE(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)
@@ -134,8 +156,8 @@ func Test_RunnerAgent_Integration_FPE(t *testing.T) {
 }
 
 func Test_RunnerAgent_Integration_OLE(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
 	th := NewTestHarness(t, CodeLogSpam)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -146,6 +168,11 @@ func Test_RunnerAgent_Integration_OLE(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)
@@ -164,8 +191,8 @@ func Test_RunnerAgent_Integration_OLE(t *testing.T) {
 }
 
 func Test_RunnerAgent_Integration_Segfault(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
 	th := NewTestHarness(t, CodeSegfault)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -176,6 +203,11 @@ func Test_RunnerAgent_Integration_Segfault(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)
@@ -194,8 +226,8 @@ func Test_RunnerAgent_Integration_Segfault(t *testing.T) {
 }
 
 func Test_RunnerAgent_Integration_IllInstruction(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
 	th := NewTestHarness(t, CodeIll)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -206,6 +238,11 @@ func Test_RunnerAgent_Integration_IllInstruction(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)
@@ -224,8 +261,8 @@ func Test_RunnerAgent_Integration_IllInstruction(t *testing.T) {
 }
 
 func Test_RunnerAgent_Integration_TLE(t *testing.T) {
-	t.Setenv("CONFIG_PATH", "artifacts/execspec1.json")
 	th := NewTestHarness(t, CodeSleep)
+	th.InitHarnessTestSpec()
 	testServerDone := make(chan struct{})
 
 	go func() {
@@ -236,6 +273,11 @@ func Test_RunnerAgent_Integration_TLE(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
+		// send execspec
+		if err := json.NewEncoder(conn).Encode(&th.TestSpec); err != nil {
+			t.Errorf("Failed sending execspec JSON: %v", err)
+		}
 
 		// read response
 		decoder := json.NewDecoder(conn)

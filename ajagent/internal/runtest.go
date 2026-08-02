@@ -11,6 +11,10 @@ import (
 	"utils"
 )
 
+/*
+The core function that runs the code at runtime and generates most verdicts (AC, WA, RE, TLE, OLE and sometimes IE)
+In some cases, ajagent itself generates verdict (CE & IE)
+*/
 func runTestCase(
 	spec utils.AgentExecSpec, inputPath string, expectedPath string, testCount int,
 ) runtimeInfo {

@@ -6,8 +6,11 @@ import (
 	"syscall"
 )
 
-// signalHandler inspects process signals and maps them to appropriate judge status codes.
-// Returns (status, details, isSignal)
+/*
+signalHandler() inspects process signals and maps them to appropriate judge status codes.
+Returns (status, details, isSignal)
+Useful for debugging purposes
+*/
 func signalHandler(err error) (status string, details string, isSignal bool) {
 	exitErr, ok := err.(*exec.ExitError)
 	if !ok {
