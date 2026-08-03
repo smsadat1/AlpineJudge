@@ -3,6 +3,7 @@ package internal
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -89,9 +90,22 @@ func RunnerAgent() {
 		input := filepath.Join(testsetPath, fmt.Sprintf("%03din.txt", i))
 		output := filepath.Join(testsetPath, fmt.Sprintf("%03dout.txt", i))
 
-		if _, err := os.Stat(input); os.IsNotExist(err) {
-			break
+		_, err := os.Stat(input)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				break // exit loop when testset ends
+			}
+
+			// real file error
+			sendEvent(
+				streamConn,
+				ERROR,
+				verdictIE, "", "",
+				fmt.Sprintf("%v", err),
+			)
+			break // break here to prevent infinite loop
 		}
+
 		testCount = i
 		runInfo := runTestCase(execSpec, input, output, i)
 		sendEvent(

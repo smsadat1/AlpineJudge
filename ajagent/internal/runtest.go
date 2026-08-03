@@ -103,7 +103,7 @@ func runTestCase(
 		}
 	case runErr := <-done:
 		if runErr != nil {
-			_, details, signal := signalHandler(runErr)
+			_, details, signal := signalHandler(spec, cmd, runErr)
 			if signal {
 				if stdout.LimitReached() || stderr.LimitReached() {
 					return runtimeInfo{

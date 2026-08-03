@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"syscall"
+	"utils"
 )
 
 /*
@@ -11,7 +12,9 @@ signalHandler() inspects process signals and maps them to appropriate judge stat
 Returns (status, details, isSignal)
 Useful for debugging purposes
 */
-func signalHandler(err error) (status string, details string, isSignal bool) {
+func signalHandler(
+	spec utils.AgentExecSpec, cmd *exec.Cmd, err error,
+) (status string, details string, isSignal bool) {
 	exitErr, ok := err.(*exec.ExitError)
 	if !ok {
 		return verdictRE, err.Error(), false
@@ -34,6 +37,24 @@ func signalHandler(err error) (status string, details string, isSignal bool) {
 			return verdictRE, "Segmentation fault (SIGSEGV)", true
 		case syscall.SIGFPE:
 			return verdictRE, "Floating point exception (SIGFPE / Division by Zero)", true
+
+		case syscall.SIGKILL:
+
+			var peakMemBytes uint64
+			if sysUsage, ok := cmd.ProcessState.SysUsage().(*syscall.Rusage); ok {
+				peakMemBytes = uint64(sysUsage.Maxrss) * 1024
+			}
+			// check if SIGKILL was caused by exceeding the allowed memory ceiling (using ~95% threshold to account for OS buffer/cgroup padding)
+			memoryThreshold := float64(spec.MemoryLimitMB) * 0.95
+
+			if float64(peakMemBytes) >= memoryThreshold {
+				return verdictMLE,
+					fmt.Sprintf("Memory Limit Exceeded (Used: %d MB / Limit: %d MB)", peakMemBytes/(1024*1024), spec.MemoryLimitMB/(1024*1024)),
+					true
+			}
+			// if memory was normal, it was terminated by agent's per-testcase timeout timer
+			return verdictTLE, "Time Limit Exceeded", true
+
 		default:
 			return verdictRE, fmt.Sprintf("Terminated by signal %v", waitStatus.Signal()), true
 		}

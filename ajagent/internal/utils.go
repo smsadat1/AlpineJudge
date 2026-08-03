@@ -12,8 +12,9 @@ const (
 	verdictOK  string = "Running test"          // acceptable
 	verdictAC  string = "Accepted"              // acceptable
 	verdictWA  string = "Wrong answer"          // acceptable
-	verdictRE  string = "Runtime error"         // not acceptable
 	verdictTLE string = "Time limit exceeded"   // not acceptable
+	verdictRE  string = "Runtime error"         // not acceptable
+	verdictMLE string = "Memory limit exceeded" // not acceptable
 	verdictOLE string = "Output limit exceeded" // not acceptable
 	verdictCE  string = "Compilation error"     // not acceptable
 	verdictIE  string = "Internal error"        // not acceptable
