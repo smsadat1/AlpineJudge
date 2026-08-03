@@ -12,6 +12,11 @@ import (
 // publish rmq specific event payload directly to RMQ in real time
 func routeToRMQ(sockCtx context.Context, queuename string, rmqm shared.RMQManager, payload []byte) {
 
+	if queuename == "" {
+		log.Println("Failed to publish event: queue name is EMPTY")
+		return
+	}
+
 	if !json.Valid(payload) {
 		log.Printf("Failed to stream event to RMQ: invalid JSON payload")
 		return

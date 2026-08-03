@@ -8,12 +8,18 @@ import (
 	"utils"
 
 	"github.com/containerd/containerd"
+	"github.com/joho/godotenv"
 )
 
+/*
+The top-most level of the Runner subsystem. Gets called by main()
+It runs as daemon process so it's never intended to exit unless crashes internally or Linux kernel intervense
+*/
 func Runner() {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	godotenv.Load(".env")
 
 	rmqm, err := shared.NewRMQManager(ctx, os.Getenv("RABBITMQ_URL_DEV"))
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"shared"
 	"testing"
 	"time"
-	"utils"
 )
 
 func Test_PrepareExecrules(t *testing.T) {
@@ -53,7 +52,7 @@ func Test_PrepareExecrules(t *testing.T) {
 		t.Fatalf("Failed creating temp lcocation for test: %v", err)
 	}
 
-	err, execrules := prepareExecrules(ctx, *tf.S3m, testJobSpec)
+	err, execrules := PrepareExecrules(ctx, *tf.S3m, testJobSpec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,13 +67,5 @@ func Test_PrepareExecrules(t *testing.T) {
 	assert.String(t, expectedImage, execrules.Image)
 	assert.Slice(t, execrules.CompileArgs, expectedCompileArgs)
 	assert.Slice(t, execrules.RunArgs, expectedRunArgs)
-	assert.Uint64(t, 0, execrules.MemoryLimitMB)
-
-	if execrules.CpuQuota != float64(utils.RunCfg.Limits.CPUQuota) {
-		t.Errorf("Expected %f, got %f", execrules.CpuQuota, float64(utils.RunCfg.Limits.CPUQuota))
-	}
-
-	if execrules.PidLimit != int64(utils.RunCfg.Limits.PIDLimit) {
-		t.Errorf("Expected %d, got %d", execrules.PidLimit, int64(utils.RunCfg.Limits.PIDLimit))
-	}
+	assert.Uint64(t, 0, execrules.PerTestMemoryLimitMB)
 }

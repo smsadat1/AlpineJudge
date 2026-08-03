@@ -2,9 +2,7 @@
 package internal
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"utils"
@@ -14,6 +12,27 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
+/*
+	Directory structure of the host temp location for runner
+	/tmp/runner/
+		sockets/
+			1.sock
+			2.sock
+			3.sock
+			...
+		testsets/
+		 	ts001/
+			ts002/
+			ts003/
+			...
+		submissions/
+			s001/
+			s002/
+			s003/
+			...
+*/
+
+// Collects parameters from env vars and set to container's Specs
 func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 
 	godotenv.Load(".env")
@@ -24,7 +43,7 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 	nnp, _ := strconv.ParseBool(os.Getenv("NO_NEW_PRIVILEGES"))
 	rroRootfs, _ := strconv.ParseBool(os.Getenv("READONLY_ROOTFS"))
 
-	fmt.Printf("CQ: %v ML: %v PID: %v NNP: %v RRO: %v", cpuQuota, memLimitMB, pidLimit, nnp, rroRootfs)
+	fmt.Printf("CQ: %v ML: %v PID: %v NNP: %v RRO: %v\n", cpuQuota, memLimitMB, pidLimit, nnp, rroRootfs)
 
 	memoryBytes := uint64(memLimitMB * 1024 * 1024)
 	period := uint64(100000) // 100 ms period
@@ -38,6 +57,10 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 		oci.WithMemoryLimit(memoryBytes),
 		// fixed memory swap so Linux doesn't abuse swap to give extra memory without limits
 		oci.WithMemorySwap(int64(memoryBytes)),
+
+		// this function isn't available (use spec.Proccess.OOMScoreAdj instead)
+		// oci.WithOOMScoreAdj(888) // 888 value set container processes in high-priority for OOM kills so container gets terminated early in case of memory abuse
+
 		oci.WithPidsLimit(pidLimit),
 		oci.WithCPUCFS(quota, period),
 
@@ -50,27 +73,6 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 				Type:        "tmpfs",
 				Options:     []string{"nosuid", "nodev", "mode=1777"},
 			},
-
-			/*
-				Directory structure
-				/tmp/runner/
-					sockets/
-						1.sock
-						2.sock
-						3.sock
-						...
-					testsets/
-					 	ts001/
-						ts002/
-						ts003/
-						...
-					submissions/
-						s001/
-						s002/
-						s003/
-						...
-			*/
-
 			{
 				Source:      "/tmp/runner/", // Entire parent folder on host
 				Destination: "/workspace",   // Mapped as container root workspace
@@ -100,22 +102,17 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 	return opts
 }
 
-func build_agentExecSpec(rules utils.ExecRules) (error, []byte) {
+func Build_AgentExecSpec(rules utils.ExecRules) utils.AgentExecSpec {
 
 	agentSpec := utils.AgentExecSpec{
-		SubmissionID: "",
-		LogLimitKB:   rules.LogLimitKB,
-		TimeoutSec:   rules.Timeoutsec,
-		TestSetPath:  "/workspace/" + rules.TestID + "/",
-		CompileArgs:  rules.CompileArgs,
-		RunArgs:      rules.RunArgs,
+		SubmissionID:  "",
+		LogLimitKB:    rules.PerTestLogLimitKB,
+		TimeoutSec:    rules.PerTestTimeoutsec,
+		MemoryLimitMB: rules.PerTestMemoryLimitMB,
+		TestSetPath:   "/workspace/testsets/" + rules.TestID + "/",
+		CompileArgs:   rules.CompileArgs,
+		RunArgs:       rules.RunArgs,
 	}
 
-	data, err := json.Marshal(agentSpec)
-	if err != nil {
-		return err, []byte{}
-	}
-
-	log.Println("Created agent exespec json")
-	return nil, data
+	return agentSpec
 }

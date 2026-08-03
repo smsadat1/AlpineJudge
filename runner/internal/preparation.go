@@ -7,7 +7,7 @@ import (
 	"shared"
 )
 
-func prepareExecrules(
+func PrepareExecrules(
 	ctx context.Context, s3m shared.S3Manager, jobspec shared.JobSpec,
 ) (error, utils.ExecRules) {
 
@@ -125,15 +125,12 @@ func prepareExecrules(
 		CompileArgs: compileArgs,
 		RunArgs:     runArgs,
 
-		EventQueueName: jobspec.EventQueue,
+		TestID:         jobspec.Testset,
+		EventQueueName: jobspec.SSEQueue,
 
-		CpuQuota:       float64(utils.RunCfg.Limits.CPUQuota),
-		MemoryLimitMB:  utils.RunCfg.Limits.MemoryLimitMB,
-		NoNewPrivilege: utils.RunCfg.Limits.NoNewPrivs,
-		PidLimit:       int64(utils.RunCfg.Limits.PIDLimit),
-		Timeoutsec:     uint32(utils.RunCfg.Limits.TimeoutSec),
-		ReadOnlyRootfs: utils.RunCfg.Limits.RORootFS,
-		LogLimitKB:     uint32(utils.RunCfg.Limits.LogLimitKB),
+		PerTestMemoryLimitMB: jobspec.PerTestMemoryLimitMB,
+		PerTestTimeoutsec:    jobspec.PerTestTimeoutsec,
+		PerTestLogLimitKB:    jobspec.PerTestLogLimitKB,
 	}
 
 	return nil, execRules

@@ -33,16 +33,10 @@ type ExecRules struct {
 	// environment
 	EventQueueName string
 
-	Env map[string]string // only "CONFIG_PATH=/workspace/execspec.json" | ok
-
 	// rules
-	MemoryLimitMB  uint64  // oci | ok
-	PidLimit       int64   // oci | ok
-	CpuQuota       float64 // oci | ok
-	NoNewPrivilege bool    // oci | ok
-	ReadOnlyRootfs bool    // oci | ok
-	Timeoutsec     uint32  // agent + oci (t+extra)
-	LogLimitKB     uint32  // agent	| ok
+	PerTestMemoryLimitMB uint64
+	PerTestTimeoutsec    uint32
+	PerTestLogLimitKB    uint32
 }
 
 // execution specification for in-container agent
@@ -53,8 +47,9 @@ type AgentExecSpec struct {
 	HaltOnFirstError bool   `json:"halt_on_first_error"`
 
 	// resource
-	LogLimitKB uint32 `json:"log_limit_kb"`
-	TimeoutSec uint32 `json:"timeout_sec"`
+	LogLimitKB    uint32 `json:"log_limit_kb"`
+	TimeoutSec    uint32 `json:"timeout_sec"`
+	MemoryLimitMB uint64 `json:"memory_limit_mb"`
 
 	// specifications
 	TestSetPath string   `json:"testset_path"`

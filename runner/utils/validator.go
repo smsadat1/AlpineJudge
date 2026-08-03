@@ -9,7 +9,8 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func ProcessJobSpec(ctx context.Context, msg amqp.Delivery) (shared.JobSpec, error) {
+func ProcessJobSpec(
+	ctx context.Context, msg amqp.Delivery, ssequeue string) (shared.JobSpec, error) {
 
 	log.Printf("Worker processing job len: %v\n", len(msg.Body))
 
@@ -34,5 +35,6 @@ func ProcessJobSpec(ctx context.Context, msg amqp.Delivery) (shared.JobSpec, err
 	} else {
 		log.Println("Skipping ACK logic (Running in Mock/Test environment)")
 	}
+	jobspec.SSEQueue = ssequeue
 	return jobspec, nil
 }

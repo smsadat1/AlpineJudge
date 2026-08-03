@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -26,11 +27,11 @@ func CreateWarmContainer(ctx context.Context, client *containerd.Client, slotID 
 
 	// Pull the container image & build OCI specs
 	alpineJudgeMasterImage := "ghcr.io/smsadat1/alpinejudge/master:test"
-	image := getContainerImage(alpineJudgeMasterImage, client, ctx)
+	image, err := getContainerImage(alpineJudgeMasterImage, client, ctx)
 
 	// Guard against nil pointer image
-	if image == nil {
-		return nil, fmt.Errorf("containerd image object is nil for %s", image)
+	if err != nil {
+		return nil, fmt.Errorf("containerd image object is nil for %v", err)
 	}
 
 	var opts []oci.SpecOpts
@@ -57,7 +58,15 @@ func CreateWarmContainer(ctx context.Context, client *containerd.Client, slotID 
 
 	// create related socket file on host before container boots
 	socketPath := fmt.Sprintf("/tmp/runner/sockets/%d.sock", slotID)
-	_ = os.Remove(socketPath) // clean stale socker
+	_ = os.Remove(socketPath) // clean stale socket
+
+	// create socket location (just in case it wasn't created)
+	_, err = os.Stat(socketPath)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll("/tmp/runner/sockets/", 0777); err != nil {
+			return nil, fmt.Errorf("Failed to create temp socket path (it didn't exist either): %v", err)
+		}
+	}
 
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
