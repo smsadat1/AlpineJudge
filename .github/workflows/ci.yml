@@ -49,6 +49,6 @@ jobs:
         run: | 
           sudo rm -rf /tmp/rabbitmq-testcontainers*
           sudo systemctl start containerd
-          sudo ctr -n test-namespace images pull ghcr.io/smsadat1/alpinejudge/gcc:test
+          sudo ctr -n test-namespace images pull ghcr.io/smsadat1/alpinejudge/master:test
           sudo go vet -v ./...
           sudo go test -race -v ./...
