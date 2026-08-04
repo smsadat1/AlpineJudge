@@ -3,15 +3,12 @@ package factory
 import (
 	"context"
 	"fmt"
-	"local/testrunner/repository"
 	"log"
 	"os"
 	"shared"
 	"testing"
-	"time"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/modules/rabbitmq"
@@ -150,39 +147,4 @@ func (tf *TestFactory) StartTestMinioS3(t *testing.T, ctx context.Context) {
 	if err != nil {
 		t.Fatalf("failted to setup S3 manager: %v", err)
 	}
-}
-
-func (tf *TestFactory) StartRawContainer(t *testing.T, ctx context.Context, tr repository.TestRepository) {
-
-	client, err := containerd.New("/run/containerd/containerd.sock")
-	if err != nil {
-		t.Skipf("Skipping integration test: local containerd socket not available: %v", err)
-	}
-	t.Cleanup(func() {
-		client.Close()
-	})
-
-	image, err := client.GetImage(ctx, "ghcr.io/smsadat1/alpinejudge/gcc:test")
-	if err != nil {
-		t.Fatalf("Failed to find image in containerd: %v", err)
-	}
-
-	containerID := "test-subm-" + time.Now().Format("150405")
-
-	// configure OCI Spec (Env, Mounts, Process Args)
-	container, err := client.NewContainer(
-		ctx,
-		containerID,
-		containerd.WithNewSnapshot(containerID+"-snapshot", image),
-		containerd.WithNewSpec(tr.TestOCISpecOpts...),
-	)
-	if err != nil {
-		t.Fatalf("Failed to create containerd container: %v", err)
-	}
-	t.Cleanup(func() {
-		// cleanup container with background context in case main ctx timed out
-		_ = container.Delete(namespaces.WithNamespace(context.Background(), "test-namespace"), containerd.WithSnapshotCleanup)
-	})
-
-	tf.RawContainer = container
 }
