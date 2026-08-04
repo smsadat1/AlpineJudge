@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"dispatcher"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +15,6 @@ type RunnerTestRepository struct {
 	TestSubmissionID  string
 	TestsetID         string
 	TestJobSpec       shared.JobSpec
-	TestSubmSpec      dispatcher.SubmissionSpec
 	TestExecRules     utils.ExecRules
 	TestOCISpecOpts   []oci.SpecOpts
 	TestAgentExecSpec utils.AgentExecSpec
@@ -137,11 +135,11 @@ func (rtr *RunnerTestRepository) CreateTempLocations(t *testing.T) {
 	}
 }
 
-func (rtr *RunnerTestRepository) CopyFiles(t *testing.T) {
+func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 	t.Helper()
 
 	// copy test artifacts files
-	scrData, err := os.ReadFile("../examples/main.cpp")
+	scrData, err := os.ReadFile(codeFilePath)
 	if err != nil {
 		t.Errorf("Failed copying source file (read): %v", err)
 	}

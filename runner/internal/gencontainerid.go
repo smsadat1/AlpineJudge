@@ -7,6 +7,7 @@ import (
 	"github.com/jaevor/go-nanoid"
 )
 
+// creates unique contianerID because same containerID under same namespace creates collision
 func generateContainerID() string {
 	nanoID, err := nanoid.CustomASCII("0123456789", 12)
 	contID := nanoID()

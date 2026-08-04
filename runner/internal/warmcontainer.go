@@ -23,6 +23,11 @@ type WarmContainer struct {
 	mu         sync.Mutex // Guard concurrent socket access
 }
 
+/*
+Atomic SlotIDs are assigned before the container starts
+So the in-container agent (ajagent) has a deterministic socket path to listen on.
+Without this, startup becomes a bootstrapping paradox.
+*/
 func CreateWarmContainer(ctx context.Context, client *containerd.Client, slotID uint32) (*WarmContainer, error) {
 
 	// Pull the container image & build OCI specs

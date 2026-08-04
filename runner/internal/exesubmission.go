@@ -64,7 +64,7 @@ func (wc *WarmContainer) ExecSubm(
 
 			var eventdata utils.Event
 			json.Unmarshal(eventPayload, &eventdata)
-			// fmt.Printf("\nEvent: %v\n", eventdata)
+			fmt.Printf("\nEvent: %v\n", eventdata)
 
 			// pass Type, Status & Details in RMQ
 			routeToRMQ(ctx, jobspec.SSEQueue, rmqm, eventPayload)

@@ -5,6 +5,7 @@ import (
 	"shared"
 )
 
+// convenient wrapper over S3Manager's methods
 func downloadFileS3(
 	ctx context.Context, s3m shared.S3Manager,
 	bucket string, srcCodeS3key string, testsetS3key string,

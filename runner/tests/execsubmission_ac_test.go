@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"local/runner/pkg"
-	"log"
 	"testing"
 	"time"
 	"utils"
@@ -24,7 +23,7 @@ func Test_ExecSubm_AC(t *testing.T) {
 	tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t)
+	tr.CopyFiles(t, "../examples/main.cpp")
 
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
@@ -56,11 +55,9 @@ func Test_ExecSubm_AC(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				log.Printf("Event type: %v | Status: %v | Details: %v | Stdout: %v | Stderr: %v",
-					testEventStream.Type, testEventStream.Status, testEventStream.Details, testEventStream.Stdout, testEventStream.Stderr)
-
 				counter++
-				assert.String(t, testEventStream.Status, fmt.Sprintf("Running test %v", counter))
+				assert.String(t, "INFO", testEventStream.Type)
+				assert.String(t, fmt.Sprintf("Running test %v", counter), testEventStream.Status)
 			}
 		}
 	}()

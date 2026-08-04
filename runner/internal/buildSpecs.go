@@ -15,24 +15,31 @@ import (
 /*
 	Directory structure of the host temp location for runner
 	/tmp/runner/
-		sockets/
+		sockets/    -> created & managed by warm container creator
 			1.sock
 			2.sock
 			3.sock
 			...
-		testsets/
+		testsets/	-> base location created by higher level InitRunner() but submission specific locations created by Orchestrator()
+						When container gets assigned with job. S3 downloads file here.
 		 	ts001/
 			ts002/
 			ts003/
 			...
-		submissions/
+		submissions/ -> base location created by higher level InitRunner() but submission specific locations created by Orchestrator()
+						When container gets assigned with job.
 			s001/
 			s002/
 			s003/
 			...
 */
 
-// Collects parameters from env vars and set to container's Specs
+/*
+This function is responsible building the OCI specs for all containers.
+It derives parameters directly from env vars instead of relying on provided payloads from upstream services.
+Since containers are pre-created as warm contianer so it can't have job to execute immediately.
+This also avoid the bootstrap problem for the in-container agent (ajagent)
+*/
 func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 
 	godotenv.Load(".env")
@@ -82,7 +89,7 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 		}),
 
 		oci.WithEnv([]string{
-			// Must use this so all necessary tools are available in /usr/bin & /usr/sbin as some images doesn't do that b default
+			// Must use this so all necessary tools are available in /usr/bin & /usr/sbin as some images doesn't do that by default
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"STREAM_SOCKET_PATH=/workspace/sockets/" + fmt.Sprint(slotID) + ".sock",
 		}),
@@ -102,6 +109,10 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 	return opts
 }
 
+/*
+Creates instruction payload for in-container agent.
+Passed via unix socket by Orchestrator to in-contianer agent (ajagent).
+*/
 func Build_AgentExecSpec(rules utils.ExecRules) utils.AgentExecSpec {
 
 	agentSpec := utils.AgentExecSpec{
