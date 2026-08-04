@@ -1,7 +1,9 @@
-package dispatcher
+package pkg
 
 import (
 	"context"
+	"dispatcher/internal"
+	// "dispatcher/internal"
 	"errors"
 	"log"
 	"net/http"
@@ -14,7 +16,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func main() {
+func Dispatcher() {
 	/*
 		Signal aware context
 		Auto cancels when the OS sends termination commands like Ctrl+C (SIGINT) or systemd stop (SIGTERM).
@@ -28,7 +30,7 @@ func main() {
 	}
 
 	log.Println("Loading dispatcher configurations...")
-	if err := LoadConfigs("config.example.yaml"); err != nil {
+	if err := internal.LoadConfigs("config.example.yaml"); err != nil {
 		log.Fatalf("%v", err)
 	}
 
@@ -61,7 +63,7 @@ func main() {
 	}()
 
 	log.Println("Starting Dispatcher HTTP server...")
-	server := InitHTTPServer(ctx, s3m, rmqMgr)
+	server := internal.InitHTTPServer(ctx, s3m, rmqMgr)
 
 	// 3. background HTTP server listener to make it non-blocking
 	go func() {

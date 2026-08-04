@@ -1,4 +1,4 @@
-package dispatcher
+package internal
 
 type SubmissionSpec struct {
 	SubmissionID   string `json:"submission_id"`

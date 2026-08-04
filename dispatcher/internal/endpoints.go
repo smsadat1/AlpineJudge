@@ -1,7 +1,9 @@
-package dispatcher
+package internal
 
 import (
 	"context"
+	"shared"
+
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,8 +12,6 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
-
-	"shared"
 )
 
 // encapsulates shared long term dependencies for http server
