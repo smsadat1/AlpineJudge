@@ -1,9 +1,11 @@
 
-	#include <unistd.h>
-	
+	#include <iostream>
+
 	int main(int argc, char const *argv[])
 	{
-	    sleep(100000000);
+	    for (int i = 0; i < 1000000; i++)
+	    {
+	        std::cout << "LOL " << std::endl;
+	    }
 	    return 0;
 	}
-	

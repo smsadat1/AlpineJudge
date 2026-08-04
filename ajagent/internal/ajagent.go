@@ -23,7 +23,7 @@ ajagent connects to that socket injected as env var from OCI specOpts during con
 The instruction payload (AgentExecSpec) contains submitted code path and relevant testset path with Compile & Runtime args.
 ajagent just reads the instruction payload and follows it.
 
-All the containers get /tmp/ruuner of host mounted as /workspace. But only touches relevant code submissions and testsets decided upstream.
+All the containers get /tmp/ruuner of host mounted as /workspace. But only touches relevant code submissions and testsets decided by upstream.
 */
 func RunnerAgent() {
 
@@ -114,7 +114,7 @@ func RunnerAgent() {
 			runInfo.Verdict, runInfo.Stdout, runInfo.Stderr,
 			runInfo.Details,
 		)
-		if runInfo.Verdict == verdictRE || runInfo.Verdict == verdictTLE || runInfo.Verdict == verdictOLE {
+		if runInfo.Verdict == verdictRE || runInfo.Verdict == verdictTLE || runInfo.Verdict == verdictOLE || runInfo.Verdict == verdictMLE {
 			break
 		}
 		if runInfo.Verdict == verdictWA && execSpec.HaltOnFirstError {

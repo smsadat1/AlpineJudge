@@ -96,25 +96,27 @@ func runTestCase(
 		if cmd.Process != nil {
 			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		}
+		// TLE is sent when runtime is more than given time limit for test
 		return runtimeInfo{
 			Verdict: verdictTLE,
 			Stdout:  stdout.buf.String(), Stderr: stderr.buf.String(),
 			Details: "Code tried to run for too long",
 		}
 	case runErr := <-done:
-		if runErr != nil {
-			_, details, signal := signalHandler(spec, cmd, runErr)
-			if signal {
-				if stdout.LimitReached() || stderr.LimitReached() {
-					return runtimeInfo{
-						Verdict: verdictOLE,
-						Stdout:  stdout.buf.String(), Stderr: stderr.buf.String(),
-						Details: fmt.Sprint(details),
-					}
-				}
 
+		if stdout.LimitReached() || stderr.LimitReached() {
+			return runtimeInfo{
+				Verdict: verdictOLE,
+				Stdout:  stdout.buf.String(), Stderr: stderr.buf.String(),
+				Details: "Code attempted to write too much",
+			}
+		}
+
+		if runErr != nil {
+			status, details, signal := signalHandler(spec, cmd, runErr)
+			if signal {
 				return runtimeInfo{
-					Verdict: verdictRE,
+					Verdict: status,
 					Stdout:  stdout.buf.String(), Stderr: stderr.buf.String(),
 					Details: fmt.Sprint(details),
 				}

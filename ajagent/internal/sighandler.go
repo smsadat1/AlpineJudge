@@ -49,7 +49,7 @@ func signalHandler(
 
 			if float64(peakMemBytes) >= memoryThreshold {
 				return verdictMLE,
-					fmt.Sprintf("Memory Limit Exceeded (Used: %d MB / Limit: %d MB)", peakMemBytes/(1024*1024), spec.MemoryLimitMB/(1024*1024)),
+					fmt.Sprintf("Memory Used: [ %d MB / %d MB]", peakMemBytes/(1024*1024), spec.MemoryLimitMB),
 					true
 			}
 			// if memory was normal, it was terminated by agent's per-testcase timeout timer
