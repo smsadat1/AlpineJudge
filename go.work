@@ -7,7 +7,5 @@ use (
 	./shared
 	./tests
 	./tests/assert
-	./tests/integration
-	./tests/unit
 	./ajagent
 )
