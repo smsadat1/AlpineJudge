@@ -13,7 +13,6 @@ import (
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/oci"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
-	"github.com/joho/godotenv"
 )
 
 func Test_Build_ociSpecOpts(t *testing.T) {
@@ -32,7 +31,13 @@ func Test_Build_ociSpecOpts(t *testing.T) {
 		fmt.Sprintf("STREAM_SOCKET_PATH=/workspace/sockets/%d.sock", testSlotID),
 	}
 
-	godotenv.Load(".env")
+	// godotenv.Load(".env")
+
+	t.Setenv("READONLY_ROOTFS", "true")
+	t.Setenv("NO_NEW_PRIVILEGES", "true")
+	t.Setenv("CPU_QUOTA", "2.0")
+	t.Setenv("MEMORY_LIMIT_MB", "1024")
+	t.Setenv("PID_LIMIT", "128")
 
 	expectedRORFS, _ := strconv.ParseBool(os.Getenv("READONLY_ROOTFS"))
 	expectedNNP, _ := strconv.ParseBool(os.Getenv("NO_NEW_PRIVILEGES"))

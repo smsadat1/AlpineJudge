@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"local/runner/pkg"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -68,11 +67,9 @@ func Test_InitRunner(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				log.Printf("Event type: %v | Status: %v | Details: %v | Stdout: %v | Stderr: %v",
-					testEventStream.Type, testEventStream.Status, testEventStream.Details, testEventStream.Stdout, testEventStream.Stderr)
-
 				counter++
-				assert.String(t, testEventStream.Status, fmt.Sprintf("Running test %v", counter))
+				assert.String(t, "INFO", testEventStream.Type)
+				assert.String(t, fmt.Sprintf("Running test %v", counter), testEventStream.Status)
 			}
 		}
 	}()
@@ -111,17 +108,5 @@ func Test_InitRunner(t *testing.T) {
 		execChan <- err
 	}()
 
-	// wait for OrchestrateSubm() to complete
-	// var orchError string
-	// select {
-	// case result := <-execChan:
-	// 	orchError = fmt.Sprintf("%v", result)
-	// case <-ctx.Done():
-	// 	t.Error("Timed out waiting for execution submission")
-	// }
-
 	<-eventsDone
-
-	// t.Logf(`Orhcestration error: %v`, orchError)
-
 }
