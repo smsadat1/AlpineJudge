@@ -103,6 +103,13 @@ func Test_InitRunner(t *testing.T) {
 		Namespace: "test-runner",
 	}
 
+	t.Setenv("READONLY_ROOTFS", "true")
+	t.Setenv("NO_NEW_PRIVILEGES", "true")
+	t.Setenv("CPU_QUOTA", "2.0")
+	t.Setenv("MEMORY_LIMIT_MB", "1024")
+	t.Setenv("PID_LIMIT", "128")
+	t.Setenv("TIMEOUT_SEC", "300")
+
 	go func() {
 		pkg.InitRunner(ctx, deps)
 		execChan <- err

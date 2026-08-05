@@ -26,7 +26,7 @@ func getContainerImage(imageName string, client *containerd.Client, ctx context.
 		if err != nil {
 			return nil, fmt.Errorf("failed to pull image %s: %w", imageName, err)
 		}
-		log.Printf("Successfully downloaded and pulled image: %s\n", image.Name())
+		log.Printf("Successfully downloaded and pulled image: %s\n", pulledImage.Name())
 		return pulledImage, nil
 	}
 
