@@ -3,6 +3,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	containerd "github.com/containerd/containerd"
@@ -15,20 +16,20 @@ func getContainerImage(imageName string, client *containerd.Client, ctx context.
 	image, err := client.GetImage(ctx, imageName)
 
 	if err == nil {
-		// log.Printf("Image: %v found locally, skipping download\n", imageName)
 		return image, nil
-	} else if errdefs.IsNotFound(err) {
-		log.Printf("Image: %v not found locally, downloading image...\n", imageName)
-		// download image
-		_, err := client.Pull(ctx, imageName, containerd.WithPullUnpack)
-		if err != nil {
-			return nil, err
-		}
-		// log.Printf("Successfully downloaded and pulled image: %s\n", image.Name())
-	} else {
-		log.Printf("Unexpected error occured querying image %v", err)
-		return nil, err
 	}
 
-	return image, nil
+	if errdefs.IsNotFound(err) {
+		log.Printf("Image: %v not found locally, downloading image...\n", imageName)
+		// download image
+		pulledImage, err := client.Pull(ctx, imageName, containerd.WithPullUnpack)
+		if err != nil {
+			return nil, fmt.Errorf("failed to pull image %s: %w", imageName, err)
+		}
+		log.Printf("Successfully downloaded and pulled image: %s\n", image.Name())
+		return pulledImage, nil
+	}
+
+	log.Printf("Unexpected error occured querying image %v", err)
+	return nil, err
 }
