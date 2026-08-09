@@ -13,8 +13,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// empty run args test
-func Test_ExecSubm_IE(t *testing.T) {
+func Test_ExecSubm_RE_dz(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
@@ -23,7 +22,7 @@ func Test_ExecSubm_IE(t *testing.T) {
 	tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/main.cpp")
+	tr.CopyFiles(t, "../examples/divzero.cpp")
 
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
@@ -41,6 +40,7 @@ func Test_ExecSubm_IE(t *testing.T) {
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
 		defer close(eventsDone)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -55,8 +55,7 @@ func Test_ExecSubm_IE(t *testing.T) {
 				json.Unmarshal(delivery.Body, &testEventStream)
 
 				assert.String(t, "INFO", testEventStream.Type)
-				assert.String(t, "Internal error", testEventStream.Status)
-				assert.String(t, "exec: no command", testEventStream.Details)
+				assert.String(t, "Runtime error", testEventStream.Status)
 			}
 		}
 	}()
@@ -73,7 +72,6 @@ func Test_ExecSubm_IE(t *testing.T) {
 	}()
 
 	// send execspec
-	tr.TestAgentExecSpec.RunArgs = []string{""} // overwrite with empty args to trigger IE
 	if err := json.NewEncoder(tf.WarmContainer.Conn).Encode(&tr.TestAgentExecSpec); err != nil {
 		t.Errorf("Failed sending execspec JSON: %v", err)
 	}
@@ -89,16 +87,12 @@ func Test_ExecSubm_IE(t *testing.T) {
 
 	<-eventsDone
 
+	assert.String(t, tr.TestJobSpec.SubmissionID, contInfo.SubmissionId)
+	assert.String(t, tr.TestJobSpec.Language, contInfo.Language)
+
 	t.Logf(`Container lifecycle data
-			SubmissionID: %v
-			Language: %v
-			Version: %v
-			Elapsed time: %vms
-			Status: %v
-			StatusInfo: %v
+			Elapsed time: %vms | Status: %v | StatusInfo: %v
 			Stderr: %v
 			Stdout: %v`,
-		contInfo.SubmissionId, contInfo.Language, contInfo.Version,
 		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
-
 }

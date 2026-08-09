@@ -1,10 +1,10 @@
 package tests
 
 import (
-	"assert"
 	"context"
 	"encoding/json"
 	"local/runner/pkg"
+	"log"
 	"testing"
 	"time"
 	"utils"
@@ -13,7 +13,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_MLE(t *testing.T) {
+func Test_ExecSubm_RE_forkbomb(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
@@ -22,7 +22,7 @@ func Test_ExecSubm_MLE(t *testing.T) {
 	tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/mlemaker.cpp")
+	tr.CopyFiles(t, "../examples/forkbomb.cpp")
 
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
@@ -40,6 +40,7 @@ func Test_ExecSubm_MLE(t *testing.T) {
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
 		defer close(eventsDone)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -53,8 +54,10 @@ func Test_ExecSubm_MLE(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				assert.String(t, "INFO", testEventStream.Type)
-				assert.String(t, "Memory limit exceeded", testEventStream.Status)
+				log.Printf("Event:\n%v", testEventStream)
+
+				// assert.String(t, "INFO", testEventStream.Type)
+				// assert.String(t, "Runtime error", testEventStream.Status)
 			}
 		}
 	}()

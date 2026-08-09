@@ -14,7 +14,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_AC(t *testing.T) {
+func Test_ExecSubm_AC_C(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
@@ -89,16 +89,13 @@ func Test_ExecSubm_AC(t *testing.T) {
 
 	<-eventsDone
 
+	assert.String(t, tr.TestJobSpec.SubmissionID, contInfo.SubmissionId)
+	assert.String(t, tr.TestJobSpec.Language, contInfo.Language)
+
 	t.Logf(`Container lifecycle data
-			SubmissionID: %v
-			Language: %v
-			Version: %v
-			Elapsed time: %vms
-			Status: %v
-			StatusInfo: %v
+			Elapsed time: %vms | Status: %v | StatusInfo: %v
 			Stderr: %v
 			Stdout: %v`,
-		contInfo.SubmissionId, contInfo.Language, contInfo.Version,
 		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
 
 }

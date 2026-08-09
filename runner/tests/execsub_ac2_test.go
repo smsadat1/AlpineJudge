@@ -4,6 +4,7 @@ import (
 	"assert"
 	"context"
 	"encoding/json"
+	"fmt"
 	"local/runner/pkg"
 	"testing"
 	"time"
@@ -13,16 +14,21 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_CE(t *testing.T) {
-
+func Test_ExecSubm_AC_Java(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
 	tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
+
+	// Java
+	tr.TestJobSpec.Language = "java"
+	tr.TestAgentExecSpec.CompileArgs = []string{}
+	tr.TestAgentExecSpec.RunArgs = []string{"java", "/workspace/submissions/test001/Main.java"}
+
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/compileerr.cpp")
+	tr.CopyFiles(t, "../examples/Main.java")
 
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
@@ -40,6 +46,7 @@ func Test_ExecSubm_CE(t *testing.T) {
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
 		defer close(eventsDone)
+		counter := 0
 		for {
 			select {
 			case <-ctx.Done():
@@ -53,8 +60,9 @@ func Test_ExecSubm_CE(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				assert.String(t, "ERROR", testEventStream.Type)
-				assert.String(t, "Compilation error", testEventStream.Status)
+				counter++
+				assert.String(t, "INFO", testEventStream.Type)
+				assert.String(t, fmt.Sprintf("Running test %v", counter), testEventStream.Status)
 			}
 		}
 	}()
@@ -86,16 +94,13 @@ func Test_ExecSubm_CE(t *testing.T) {
 
 	<-eventsDone
 
+	assert.String(t, tr.TestJobSpec.SubmissionID, contInfo.SubmissionId)
+	assert.String(t, tr.TestJobSpec.Language, contInfo.Language)
+
 	t.Logf(`Container lifecycle data
-			SubmissionID: %v
-			Language: %v
-			Version: %v
-			Elapsed time: %vms
-			Status: %v
-			StatusInfo: %v
+			Elapsed time: %vms | Status: %v | StatusInfo: %v
 			Stderr: %v
 			Stdout: %v`,
-		contInfo.SubmissionId, contInfo.Language, contInfo.Version,
 		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
 
 }
