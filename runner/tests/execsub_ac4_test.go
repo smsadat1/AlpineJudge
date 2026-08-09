@@ -28,7 +28,7 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 	tr.TestAgentExecSpec.RunArgs = []string{"go", "run", "/workspace/submissions/test001/main.go"}
 
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/main.go")
+	tr.CopyFiles(t, "../examples/go/main.go")
 
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
