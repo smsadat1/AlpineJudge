@@ -67,6 +67,7 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 
 		// this function isn't available (use spec.Proccess.OOMScoreAdj instead)
 		// oci.WithOOMScoreAdj(888) // 888 value set container processes in high-priority for OOM kills so container gets terminated early in case of memory abuse
+		// TOOD: add max file open limit
 
 		oci.WithPidsLimit(pidLimit),
 		oci.WithCPUCFS(quota, period),
@@ -90,8 +91,11 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 
 		oci.WithEnv([]string{
 			// Must use this so all necessary tools are available in /usr/bin & /usr/sbin as some images doesn't do that by default
-			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+			"PATH=/opt/java/openjdk/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"STREAM_SOCKET_PATH=/workspace/sockets/" + fmt.Sprint(slotID) + ".sock",
+			"JAVA_HOME=/opt/java/openjdk",
+			"GOROOT=/usr/local/go",
+			"GOCACHE=/tmp/go-build",
 		}),
 	}
 
