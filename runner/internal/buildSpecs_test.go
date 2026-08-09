@@ -27,8 +27,11 @@ func Test_Build_ociSpecOpts(t *testing.T) {
 	testSlotID := 420
 	expectedArgs := []string{"/usr/bin/ajagent"}
 	expectedEnv := []string{
-		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		fmt.Sprintf("STREAM_SOCKET_PATH=/workspace/sockets/%d.sock", testSlotID),
+		"PATH=/opt/java/openjdk/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"STREAM_SOCKET_PATH=/workspace/sockets/" + fmt.Sprint(testSlotID) + ".sock",
+		"JAVA_HOME=/opt/java/openjdk",
+		"GOROOT=/usr/local/go",
+		"GOCACHE=/tmp/go-build",
 	}
 
 	// godotenv.Load(".env")
