@@ -1,3 +1,5 @@
+//go:build ignore
+
 // keep sleeping
 #include <unistd.h>
 	

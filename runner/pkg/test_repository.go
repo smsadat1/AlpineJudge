@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"shared"
@@ -139,14 +140,25 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 	t.Helper()
 
 	// copy test artifacts files
-	scrData, err := os.ReadFile(codeFilePath)
+	scrFile, err := os.Open(codeFilePath)
 	if err != nil {
-		t.Errorf("Failed copying source file (read): %v", err)
+		t.Errorf("Failed opening source file (read): %v", err)
 	}
 
-	err = os.WriteFile(fmt.Sprintf("/tmp/runner/submissions/%s/main.cpp", rtr.TestSubmissionID), scrData, 0777)
+	destDir := fmt.Sprintf("/tmp/runner/submissions/%s", rtr.TestSubmissionID)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		t.Errorf("Failed creating source file temp destination: %v", err)
+	}
+	dest := filepath.Join(destDir, filepath.Base(codeFilePath))
+	destFile, err := os.Create(dest)
 	if err != nil {
-		t.Errorf("Failed copying source file (write): %v", err)
+		t.Errorf("Failed creating destination file: %v", err)
+		return
+	}
+	defer destFile.Close()
+
+	if wn, err := io.Copy(destFile, scrFile); err != nil {
+		t.Errorf("Failed copying source submission file: %v | Written %v", err, wn)
 	}
 
 	testsetPath := "../examples/ts001"

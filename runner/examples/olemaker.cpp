@@ -1,3 +1,5 @@
+//go:build ignore
+
 // spam log buffer flush to trigger OLE
 #include <iostream>
 

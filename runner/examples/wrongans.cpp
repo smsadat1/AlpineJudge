@@ -1,3 +1,5 @@
+//go:build ignore
+
 // do multiplication instead of addition
 #include <iostream>
 

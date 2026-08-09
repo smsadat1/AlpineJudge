@@ -1,3 +1,5 @@
+//go:build ignore
+
 // for triggering RE (using Division by zero triggering SIGFPE)
 #include <iostream>
 

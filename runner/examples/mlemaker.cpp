@@ -1,3 +1,5 @@
+//go:build ignore
+
 // to trigger MLE by abusing memory
 #include <vector>
 

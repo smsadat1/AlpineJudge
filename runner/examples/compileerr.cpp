@@ -1,3 +1,5 @@
+//go:build ignore
+
 // bad code to trigger CE
 #include <iostream>
 
