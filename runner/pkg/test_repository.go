@@ -140,7 +140,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 	t.Helper()
 
 	// copy test artifacts files
-	scrFile, err := os.Open(codeFilePath)
+	srcFile, err := os.Open(codeFilePath)
 	if err != nil {
 		t.Errorf("Failed opening source file (read): %v", err)
 	}
@@ -157,7 +157,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 	}
 	defer destFile.Close()
 
-	if wn, err := io.Copy(destFile, scrFile); err != nil {
+	if wn, err := io.Copy(destFile, srcFile); err != nil {
 		t.Errorf("Failed copying source submission file: %v | Written %v", err, wn)
 	}
 

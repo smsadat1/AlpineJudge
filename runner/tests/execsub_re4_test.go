@@ -2,5 +2,5 @@ package tests
 
 import "testing"
 
-func Test_ExecSubm_RE_FDBomb(t *testing.T) {
+func Test_ExecSubm_RE_ThreadSpam(t *testing.T) {
 }

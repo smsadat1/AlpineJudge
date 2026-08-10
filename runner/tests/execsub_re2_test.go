@@ -1,10 +1,10 @@
 package tests
 
 import (
+	"assert"
 	"context"
 	"encoding/json"
 	"local/runner/pkg"
-	"log"
 	"testing"
 	"time"
 	"utils"
@@ -13,16 +13,21 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_RE_forkbomb(t *testing.T) {
-
+func Test_ExecSubm_RE_Network(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
 	tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
+
+	// Python
+	tr.TestJobSpec.Language = "py"
+	tr.TestAgentExecSpec.CompileArgs = []string{}
+	tr.TestAgentExecSpec.RunArgs = []string{"python", "/workspace/submissions/test001/network.py"}
+
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/forkbomb.cpp")
+	tr.CopyFiles(t, "../examples/network.py")
 
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
@@ -40,7 +45,7 @@ func Test_ExecSubm_RE_forkbomb(t *testing.T) {
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
 		defer close(eventsDone)
-
+		counter := 0
 		for {
 			select {
 			case <-ctx.Done():
@@ -54,10 +59,9 @@ func Test_ExecSubm_RE_forkbomb(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				log.Printf("Event:\n%v", testEventStream)
-
-				// assert.String(t, "INFO", testEventStream.Type)
-				// assert.String(t, "Runtime error", testEventStream.Status)
+				counter++
+				assert.String(t, "INFO", testEventStream.Type)
+				assert.String(t, "Runtime error", testEventStream.Status)
 			}
 		}
 	}()
@@ -89,16 +93,12 @@ func Test_ExecSubm_RE_forkbomb(t *testing.T) {
 
 	<-eventsDone
 
+	assert.String(t, tr.TestJobSpec.SubmissionID, contInfo.SubmissionId)
+	assert.String(t, tr.TestJobSpec.Language, contInfo.Language)
+
 	t.Logf(`Container lifecycle data
-			SubmissionID: %v
-			Language: %v
-			Version: %v
-			Elapsed time: %vms
-			Status: %v
-			StatusInfo: %v
+			Elapsed time: %vms | Status: %v | StatusInfo: %v
 			Stderr: %v
 			Stdout: %v`,
-		contInfo.SubmissionId, contInfo.Language, contInfo.Version,
 		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
-
 }

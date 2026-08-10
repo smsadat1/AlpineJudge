@@ -22,6 +22,7 @@ func Test_ExecSubm_WA(t *testing.T) {
 
 	tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
+	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/wrongans.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/wrongans.cpp")
 

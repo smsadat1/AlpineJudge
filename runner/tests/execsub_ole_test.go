@@ -1,91 +1,99 @@
 package tests
 
-// func Test_ExecSubm_OLE(t *testing.T) {
+import (
+	"assert"
+	"context"
+	"encoding/json"
+	"fmt"
+	"local/runner/pkg"
+	"testing"
+	"time"
+	"utils"
 
-// 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-// 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
-// 	defer cancel()
+	"github.com/containerd/containerd/v2/pkg/namespaces"
+	amqp "github.com/rabbitmq/amqp091-go"
+)
 
-// 	tf := pkg.NewRunnerTestFactory(t)
-// 	tr := pkg.NewRunnerTestRepository(t)
-// 	tr.CreateTempLocations(t)
-// 	tr.CopyFiles(t, "../examples/olemaker.cpp")
+func Test_ExecSubm_OLE(t *testing.T) {
 
-// 	tf.StartTestMinioS3(t, ctx)
-// 	tf.StartTestRMQ(t, ctx)
-// 	tf.GetWarmContainer(t, ctx)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx = namespaces.WithNamespace(ctx, "test-namespace")
+	defer cancel()
 
-// 	// get events from RMQ
-// 	interceptorQueue := make(chan amqp.Delivery, 100)
-// 	if err := tf.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
-// 		t.Fatalf("Failed to subscribe to queue: %v", err)
-// 	}
+	tf := pkg.NewRunnerTestFactory(t)
+	tr := pkg.NewRunnerTestRepository(t)
+	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/olemaker.cpp", tr.TestJobSpec.SubmissionID)
+	tr.CreateTempLocations(t)
+	tr.CopyFiles(t, "../examples/olemaker.cpp")
 
-// 	// channel to signal event end
-// 	eventsDone := make(chan struct{})
+	tf.StartTestMinioS3(t, ctx)
+	tf.StartTestRMQ(t, ctx)
+	tf.GetWarmContainer(t, ctx)
 
-// 	// Goroutine reading events cleanly with context cancellation
-// 	go func() {
-// 		defer close(eventsDone)
-// 		for {
-// 			select {
-// 			case <-ctx.Done():
-// 				return
-// 			case delivery, ok := <-interceptorQueue:
-// 				if !ok {
-// 					return
-// 				}
-// 				_ = delivery.Ack(false)
+	// get events from RMQ
+	interceptorQueue := make(chan amqp.Delivery, 100)
+	if err := tf.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
+		t.Fatalf("Failed to subscribe to queue: %v", err)
+	}
 
-// 				var testEventStream utils.Event
-// 				json.Unmarshal(delivery.Body, &testEventStream)
+	// channel to signal event end
+	eventsDone := make(chan struct{})
 
-// 				log.Printf("Event type: %v | Status: %v | Details: %v | Stdout: %v | Stderr: %v",
-// 					testEventStream.Type, testEventStream.Status, testEventStream.Details, testEventStream.Stdout, testEventStream.Stderr)
+	// Goroutine reading events cleanly with context cancellation
+	go func() {
+		defer close(eventsDone)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case delivery, ok := <-interceptorQueue:
+				if !ok {
+					return
+				}
+				_ = delivery.Ack(false)
 
-// 				assert.String(t, "INFO", testEventStream.Type)
-// 				assert.String(t, "Time limit exceeded", testEventStream.Status)
-// 			}
-// 		}
-// 	}()
+				var testEventStream utils.Event
+				json.Unmarshal(delivery.Body, &testEventStream)
 
-// 	// channel to safely receive the return value of ExecSubm
-// 	type result struct {
-// 		info utils.ContainerInfo
-// 	}
-// 	execChan := make(chan result, 1)
+				assert.String(t, "INFO", testEventStream.Type)
+				assert.String(t, "Output limit exceeded", testEventStream.Status)
+			}
+		}
+	}()
 
-// 	go func() {
-// 		info := tf.WarmContainer.ExecSubm(ctx, tr.TestExecRules, tr.TestJobSpec, *tf.Rmqm, *tf.S3m)
-// 		execChan <- result{info: info}
-// 	}()
+	// channel to safely receive the return value of ExecSubm
+	type result struct {
+		info utils.ContainerInfo
+	}
+	execChan := make(chan result, 1)
 
-// 	// send execspec
-// 	if err := json.NewEncoder(tf.WarmContainer.Conn).Encode(&tr.TestAgentExecSpec); err != nil {
-// 		t.Errorf("Failed sending execspec JSON: %v", err)
-// 	}
+	go func() {
+		info := tf.WarmContainer.ExecSubm(ctx, tr.TestExecRules, tr.TestJobSpec, *tf.Rmqm, *tf.S3m)
+		execChan <- result{info: info}
+	}()
 
-// 	// wait for ExecSubm() to complete
-// 	var contInfo utils.ContainerInfo
-// 	select {
-// 	case result := <-execChan:
-// 		contInfo = result.info
-// 	case <-ctx.Done():
-// 		t.Error("Timed out waiting for execution submission")
-// 	}
+	// send execspec
+	if err := json.NewEncoder(tf.WarmContainer.Conn).Encode(&tr.TestAgentExecSpec); err != nil {
+		t.Errorf("Failed sending execspec JSON: %v", err)
+	}
 
-// 	<-eventsDone
+	// wait for ExecSubm() to complete
+	var contInfo utils.ContainerInfo
+	select {
+	case result := <-execChan:
+		contInfo = result.info
+	case <-ctx.Done():
+		t.Error("Timed out waiting for execution submission")
+	}
 
-// 	t.Logf(`Container lifecycle data
-// 			SubmissionID: %v
-// 			Language: %v
-// 			Version: %v
-// 			Elapsed time: %vms
-// 			Status: %v
-// 			StatusInfo: %v
-// 			Stderr: %v
-// 			Stdout: %v`,
-// 		contInfo.SubmissionId, contInfo.Language, contInfo.Version,
-// 		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
+	<-eventsDone
 
-// }
+	assert.String(t, tr.TestJobSpec.SubmissionID, contInfo.SubmissionId)
+	assert.String(t, tr.TestJobSpec.Language, contInfo.Language)
+
+	t.Logf(`Container lifecycle data
+			Elapsed time: %vms | Status: %v | StatusInfo: %v
+			Stderr: %v
+			Stdout: %v`,
+		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
+}

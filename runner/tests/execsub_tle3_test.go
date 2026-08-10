@@ -14,7 +14,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_RE_dz(t *testing.T) {
+func Test_ExecSubm_TLE_forkbomb(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
@@ -22,9 +22,9 @@ func Test_ExecSubm_RE_dz(t *testing.T) {
 
 	tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
-	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/divzero.cpp", tr.TestJobSpec.SubmissionID)
+	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/forkbomb.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/divzero.cpp")
+	tr.CopyFiles(t, "../examples/forkbomb.cpp")
 
 	tf.StartTestMinioS3(t, ctx)
 	tf.StartTestRMQ(t, ctx)
@@ -57,7 +57,7 @@ func Test_ExecSubm_RE_dz(t *testing.T) {
 				json.Unmarshal(delivery.Body, &testEventStream)
 
 				assert.String(t, "INFO", testEventStream.Type)
-				assert.String(t, "Runtime error", testEventStream.Status)
+				assert.String(t, "Time limit exceeded", testEventStream.Status)
 			}
 		}
 	}()
@@ -89,12 +89,16 @@ func Test_ExecSubm_RE_dz(t *testing.T) {
 
 	<-eventsDone
 
-	assert.String(t, tr.TestJobSpec.SubmissionID, contInfo.SubmissionId)
-	assert.String(t, tr.TestJobSpec.Language, contInfo.Language)
-
 	t.Logf(`Container lifecycle data
-			Elapsed time: %vms | Status: %v | StatusInfo: %v
+			SubmissionID: %v
+			Language: %v
+			Version: %v
+			Elapsed time: %vms
+			Status: %v
+			StatusInfo: %v
 			Stderr: %v
 			Stdout: %v`,
+		contInfo.SubmissionId, contInfo.Language, contInfo.Version,
 		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
+
 }
