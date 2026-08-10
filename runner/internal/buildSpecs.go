@@ -56,6 +56,8 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 	period := uint64(100000) // 100 ms period
 	quota := int64(cpuQuota * float64(period))
 
+	// file descriptor limit isn't explicitly set here in OCI spec generator but WithDefaultSpec() does the work for that
+	// TODO: Explicitly add FD limit (RLIMIT_NOFILE)
 	opts := []oci.SpecOpts{
 		// start with default Linux specs or else OCI spec fails
 		oci.WithDefaultSpec(),
@@ -67,7 +69,7 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 
 		// this function isn't available (use spec.Proccess.OOMScoreAdj instead)
 		// oci.WithOOMScoreAdj(888) // 888 value set container processes in high-priority for OOM kills so container gets terminated early in case of memory abuse
-		// TOOD: add max file open limit
+		// TOOD: make a wrapper for OOMScoreAdj (currently probably handled by oci.WithDefaultSpec() )
 
 		oci.WithPidsLimit(pidLimit),
 		oci.WithCPUCFS(quota, period),

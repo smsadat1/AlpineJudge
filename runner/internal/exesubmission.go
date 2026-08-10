@@ -43,21 +43,20 @@ func (wc *WarmContainer) ExecSubm(
 
 	start := time.Now()
 
-	// Context to gracefully shut down socket listener worker when function returns
-	// sockCtx, sockCancel := context.WithCancel(ctx)
-	// defer sockCancel()
-
 	// Goroutine: Accepts incoming socket connections from container & publishes to RabbitMQ in real time
-
 	// Handle stream from this connection
 	go func(c net.Conn) {
 		defer c.Close()
 
+		/*
+			By default unix socket only have 64KB of log limit, which is ofter far below than a testcase might send during OLE
+			Which causes overflow and unix socket connection drops silently.
+			That's why a good estimation of 10 MB max log size is set with 60KB of buffer so socket connection doesn't break during OLE
+		*/
+		const MAXLOGCAP = 10 * 1024 * 1024 // 10 MB
 		scanner := bufio.NewScanner(c)
-		if err := scanner.Err(); err != nil {
-			log.Printf("Failed to scan streamed data: %v", err)
-			return
-		}
+		buf := make([]byte, 60*1024)
+		scanner.Buffer(buf, MAXLOGCAP)
 
 		for scanner.Scan() {
 			eventPayload := scanner.Bytes()
@@ -78,6 +77,11 @@ func (wc *WarmContainer) ExecSubm(
 					s3m.UploadFileToS3(ctx, "submissions/"+jobspec.SubmissionID+"/stderr.log", strings.NewReader(forS3.Stderr))
 				}
 			}(payloadCopy)
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Printf("Failed to scan streamed data: %v", err)
+			return
 		}
 
 	}(wc.Conn)
