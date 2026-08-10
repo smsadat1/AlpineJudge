@@ -114,7 +114,11 @@ func RunnerAgent() {
 			runInfo.Verdict, runInfo.Stdout, runInfo.Stderr,
 			runInfo.Details,
 		)
-		if runInfo.Verdict == verdictRE || runInfo.Verdict == verdictTLE || runInfo.Verdict == verdictOLE || runInfo.Verdict == verdictMLE {
+		if runInfo.Verdict == verdictRE ||
+			runInfo.Verdict == verdictTLE ||
+			runInfo.Verdict == verdictOLE ||
+			runInfo.Verdict == verdictMLE ||
+			runInfo.Verdict == verdictIE {
 			break
 		}
 		if runInfo.Verdict == verdictWA && execSpec.HaltOnFirstError {

@@ -181,6 +181,7 @@ func Test_RunnerAgent_Integration_OLE(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+			fmt.Printf("%v\n", event)
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Output limit exceeded", event.Status)
 		}

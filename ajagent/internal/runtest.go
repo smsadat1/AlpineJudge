@@ -63,8 +63,8 @@ func runTestCase(
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true, // Isolate process groups (Linux/Unix)
 	}
-	stdout := &LimitExceededWriter{limit: int64(spec.LogLimitKB) * 1000}
-	stderr := &LimitExceededWriter{limit: int64(spec.LogLimitKB) * 1000}
+	stdout := &LimitExceededWriter{limit: int64(spec.LogLimitKB) * 1000, cancel: tcCancel}
+	stderr := &LimitExceededWriter{limit: int64(spec.LogLimitKB) * 1000, cancel: tcCancel}
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
@@ -96,12 +96,22 @@ func runTestCase(
 		if cmd.Process != nil {
 			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		}
+		// If context was canceled because LimitExceededWriter called cancel()
+		if stdout.LimitReached() || stderr.LimitReached() {
+			return runtimeInfo{
+				Verdict: verdictOLE,
+				Stdout:  stdout.buf.String(),
+				Stderr:  stderr.buf.String(),
+				Details: "Code attempted to write too much",
+			}
+		}
 		// TLE is sent when runtime is more than given time limit for test
 		return runtimeInfo{
 			Verdict: verdictTLE,
 			Stdout:  stdout.buf.String(), Stderr: stderr.buf.String(),
 			Details: "Code tried to run for too long",
 		}
+
 	case runErr := <-done:
 
 		if stdout.LimitReached() || stderr.LimitReached() {

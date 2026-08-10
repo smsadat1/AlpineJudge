@@ -2,6 +2,8 @@ package internal
 
 import (
 	"bytes"
+	"context"
+	"sync"
 )
 
 /*
@@ -23,26 +25,46 @@ container is destroyed before the remaining buffered logs can be flushed.
 Do not assume this writer alone provides complete log-size enforcement.
 */
 type LimitExceededWriter struct {
-	buf          bytes.Buffer
 	limit        int64
+	written      int64
+	buf          bytes.Buffer
+	cancel       context.CancelFunc
+	mu           sync.Mutex
 	limitReached bool
 }
 
 func (w *LimitExceededWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-	// Defensively block mem alloc before it reaches the buffer
-	if int64(w.buf.Len())+int64(len(p)) > w.limit {
-		// Write only up to the remaining capacity to capture partial logs for debugging
-		w.limitReached = true
-		remaining := w.limit - int64(w.buf.Len())
-		if remaining > 0 {
-			w.buf.Write(p[:remaining])
+	n := len(p)
+
+	if w.written+int64(n) >= w.limit {
+		if !w.limitReached {
+			w.limitReached = true
+
+			// write only upto limit
+			allowed := w.limit - w.written
+			if allowed > 0 {
+				w.buf.Write(p[:allowed])
+				w.written += allowed
+			}
+
+			// cancel context immediately
+			if w.cancel != nil {
+				w.cancel()
+			}
 		}
-		return len(p), ErrorOLE
+		// Return n so the caller doesn't panic, but process is being killed in background
+		return n, nil
 	}
+
+	w.written += int64(n)
 	return w.buf.Write(p)
 }
 
 func (w *LimitExceededWriter) LimitReached() bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	return w.limitReached
 }
