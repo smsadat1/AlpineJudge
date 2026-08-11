@@ -11,11 +11,12 @@ on:
        - 'docs/**'
 
 jobs:
-  test: 
-    runs-on: ubuntu-latest
-            
+  unit-tests: 
+    runs-on: ubuntu-latest 
     strategy:
       fail-fast: false
+      matrix:
+        module: [ajagent, shared, dispatcher]
 
     steps:
       - name: Checkout Code
@@ -26,24 +27,25 @@ jobs:
         with:
           go-version: '1.26'
         
-      - name: Run Ajagent Tests
-        working-directory: ajagent
-        run: | 
-          go vet -v ./...
-          go test -race -v ./...
-      
-      - name: Run Shared module Tests
-        working-directory: shared
-        run: |
-          go vet -v ./...
-          go test -race -v ./...
-        
-      - name: Run Dispatcher Tests
-        working-directory: dispatcher
-        run: | 
-          go vet -v ./...
-          go test -race -v ./...
+      - name: Run ${{ matrix.module }} Tests
+        working-directory: ${{ matrix.module }}  
+        run : | 
+            go vet -v ./...
+            go test -race -v ./...
 
+  integration-tests:
+    needs: unit-tests
+    runs-on: ubuntu-latest 
+  
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+    
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          
       - name: Run Runner Tests
         working-directory: runner
         run: | 
