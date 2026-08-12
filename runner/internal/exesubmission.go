@@ -4,14 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"shared"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 	"utils"
@@ -53,6 +51,7 @@ func (wc *WarmContainer) ExecSubm(
 			Which causes overflow and unix socket connection drops silently.
 			That's why a good estimation of 10 MB max log size is set with 60KB of buffer so socket connection doesn't break during OLE
 		*/
+		// TODO: Make MAXLOGCAP part of env vars instead
 		const MAXLOGCAP = 10 * 1024 * 1024 // 10 MB
 		scanner := bufio.NewScanner(c)
 		buf := make([]byte, 60*1024)
@@ -61,22 +60,13 @@ func (wc *WarmContainer) ExecSubm(
 		for scanner.Scan() {
 			eventPayload := scanner.Bytes()
 
-			var eventdata utils.Event
-			json.Unmarshal(eventPayload, &eventdata)
+			// var eventdata utils.Event
+			// json.Unmarshal(eventPayload, &eventdata)
 			// fmt.Printf("\nEvent: %v\n", eventdata)
 
-			// pass Type, Status & Details in RMQ
+			// pass entire payload to RMQ
+			// Earlier only Type, Status & Detail was sent while passing stdout & stderr directed to S3
 			routeToRMQ(ctx, jobspec.SSEQueue, rmqm, eventPayload)
-
-			// Process S3 uploads in a goroutine so it doesn't block scanner.Scan()
-			payloadCopy := make([]byte, len(eventPayload))
-			go func(data []byte) {
-				var forS3 utils.Event
-				if err := json.Unmarshal(data, &forS3); err == nil {
-					s3m.UploadFileToS3(ctx, "submissions/"+jobspec.SubmissionID+"/stdout.log", strings.NewReader(forS3.Stdout))
-					s3m.UploadFileToS3(ctx, "submissions/"+jobspec.SubmissionID+"/stderr.log", strings.NewReader(forS3.Stderr))
-				}
-			}(payloadCopy)
 		}
 
 		if err := scanner.Err(); err != nil {
