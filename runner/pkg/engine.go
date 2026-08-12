@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 	"utils"
@@ -82,14 +83,24 @@ func InitRunner(ctx context.Context, deps utils.EngineDeps) {
 	}()
 
 	// main orchestration
+	var wg sync.WaitGroup
 	for {
 
 		select {
 		case <-ctx.Done():
 			log.Println("Shutting down runner engine")
+			wg.Wait() // block until active OrchestrateSubm workers finish
 			return
-		case msg := <-localqueue:
+		case msg, ok := <-localqueue:
+			if !ok {
+				log.Println("Local queue channel closed, exiting")
+				return
+			}
+
+			// worker go-routine
+			wg.Add(1)
 			go func(delivery amqp.Delivery) {
+				defer wg.Done()
 
 				var warmcontainer *internal.WarmContainer
 

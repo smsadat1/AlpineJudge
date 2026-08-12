@@ -33,17 +33,9 @@ type TestFactory struct {
 	WarmContainer *internal.WarmContainer
 }
 
-func NewRunnerTestFactory(t *testing.T) *TestFactory {
+func NewRunnerTestFactory() *TestFactory {
 
-	t.Helper()
-
-	t.Setenv("TEST_S3_URL", "http://localhost:9000")
-	t.Setenv("TEST_S3_USERNAME", "minioadmin")
-	t.Setenv("TEST_S3_PASSWORD", "minioadminpassword")
-	t.Setenv("TEST_S3_BUCKET_NAME", "testbucket")
-	t.Setenv("TEST_S3_REGION_NAME", "us-east-1")
-	t.Setenv("TEST_RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-	t.Setenv("RABBITMQ_QUEUE_NAME", "queue-001")
+	// t.Helper()
 
 	s3Bucket := os.Getenv("TEST_S3_BUCKET_NAME")
 	s3Region := os.Getenv("TEST_S3_REGION_NAME")
@@ -65,9 +57,9 @@ func NewRunnerTestFactory(t *testing.T) *TestFactory {
 	}
 }
 
-func (tf *TestFactory) StartTestRMQ(t *testing.T, ctx context.Context) {
+func (tf *TestFactory) StartTestRMQ(ctx context.Context) {
 
-	t.Helper()
+	// t.Helper()
 
 	rmqContainer, err := rabbitmq.Run(
 		ctx,
@@ -77,19 +69,12 @@ func (tf *TestFactory) StartTestRMQ(t *testing.T, ctx context.Context) {
 		testcontainers.WithExposedPorts("5672"),
 	)
 	if err != nil {
-		t.Fatalf("failed to start container: %s", err)
+		log.Fatalf("failed to start container: %s", err)
 	}
-
-	// Register teardown with Go test framework
-	t.Cleanup(func() {
-		if err := testcontainers.TerminateContainer(rmqContainer); err != nil {
-			log.Printf("failed to terminate rabbitmq container: %s", err)
-		}
-	})
 
 	amqpURL, err := rmqContainer.AmqpURL(ctx)
 	if err != nil {
-		t.Fatalf("failed to get amqp url: %v", err)
+		log.Fatalf("failed to get amqp url: %v", err)
 	}
 
 	tf.rmqContainer = rmqContainer
@@ -97,13 +82,13 @@ func (tf *TestFactory) StartTestRMQ(t *testing.T, ctx context.Context) {
 	tf.Rmqm, err = shared.NewRMQManager(ctx, tf.rmqURL)
 
 	if err != nil {
-		t.Fatalf("failed to setup rabbitmq manager: %v", err)
+		log.Fatalf("failed to setup rabbitmq manager: %v", err)
 	}
 }
 
-func (tf *TestFactory) StartTestMinioS3(t *testing.T, ctx context.Context) {
+func (tf *TestFactory) StartTestMinioS3(ctx context.Context) {
 
-	t.Helper()
+	// t.Helper()
 	// Command to configure alias, create bucket, and set region using internal 'mc' tool
 	setupCmd := testcontainers.NewRawCommand([]string{
 		"sh", "-c",
@@ -125,20 +110,13 @@ func (tf *TestFactory) StartTestMinioS3(t *testing.T, ctx context.Context) {
 	)
 
 	if err != nil {
-		t.Fatalf("failed to start container: %s", err)
+		log.Fatalf("failed to start container: %s", err)
 	}
-
-	// Clean up container automatically when the test finishes
-	t.Cleanup(func() {
-		if err := testcontainers.TerminateContainer(minioContainer); err != nil {
-			log.Printf("failed to terminate minio container: %s", err)
-		}
-	})
 
 	// Save host & port endpoint for your MinIO Go client
 	endpoint, err := minioContainer.ConnectionString(ctx)
 	if err != nil {
-		t.Fatalf("failed to get minio connection string: %v", err)
+		log.Fatalf("failed to get minio connection string: %v", err)
 	}
 
 	tf.minioContainer = minioContainer
@@ -146,11 +124,11 @@ func (tf *TestFactory) StartTestMinioS3(t *testing.T, ctx context.Context) {
 	tf.S3m, err = shared.InitS3Manager(ctx, tf.S3bucket, tf.s3Region, tf.s3UserName, tf.s3Password, tf.s3URL)
 
 	if err != nil {
-		t.Fatalf("failted to setup S3 manager: %v", err)
+		log.Fatalf("failted to setup S3 manager: %v", err)
 	}
 }
 
-func (tf *TestFactory) GetWarmContainer(t *testing.T, ctx context.Context) {
+func (tf *TestFactory) GetWarmContainer(t *testing.T, ctx context.Context) *internal.WarmContainer {
 
 	t.Helper()
 
@@ -170,5 +148,16 @@ func (tf *TestFactory) GetWarmContainer(t *testing.T, ctx context.Context) {
 		t.Fatalf("Failed to get warm container: %v", err)
 	}
 
-	tf.WarmContainer = wc
+	return wc
+}
+
+func (tf *TestFactory) CleanupGlobal(ctx context.Context) {
+
+	if err := testcontainers.TerminateContainer(tf.rmqContainer); err != nil {
+		log.Printf("failed to terminate rabbitmq container: %s", err)
+	}
+
+	if err := testcontainers.TerminateContainer(tf.minioContainer); err != nil {
+		log.Printf("failed to terminate minio container: %s", err)
+	}
 }
