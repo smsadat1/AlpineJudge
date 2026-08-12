@@ -60,10 +60,6 @@ func (wc *WarmContainer) ExecSubm(
 		for scanner.Scan() {
 			eventPayload := scanner.Bytes()
 
-			// var eventdata utils.Event
-			// json.Unmarshal(eventPayload, &eventdata)
-			// fmt.Printf("\nEvent: %v\n", eventdata)
-
 			// pass entire payload to RMQ
 			// Earlier only Type, Status & Detail was sent while passing stdout & stderr directed to S3
 			routeToRMQ(ctx, jobspec.SSEQueue, rmqm, eventPayload)
