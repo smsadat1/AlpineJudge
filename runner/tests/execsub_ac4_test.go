@@ -19,7 +19,7 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
-	tf := pkg.NewRunnerTestFactory(t)
+	// tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 
 	// Go
@@ -30,13 +30,13 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/go/main.go")
 
-	tf.StartTestMinioS3(t, ctx)
-	tf.StartTestRMQ(t, ctx)
-	tf.GetWarmContainer(t, ctx)
+	// tf.StartTestMinioS3(t, ctx)
+	// tf.StartTestRMQ(t, ctx)
+	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
 	// get events from RMQ
 	interceptorQueue := make(chan amqp.Delivery, 100)
-	if err := tf.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
+	if err := SharedTF.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
 		t.Fatalf("Failed to subscribe to queue: %v", err)
 	}
 
@@ -74,12 +74,12 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 	execChan := make(chan result, 1)
 
 	go func() {
-		info := tf.WarmContainer.ExecSubm(ctx, tr.TestExecRules, tr.TestJobSpec, *tf.Rmqm, *tf.S3m)
+		info := warmCont.ExecSubm(ctx, tr.TestExecRules, tr.TestJobSpec, *SharedTF.Rmqm, *SharedTF.S3m)
 		execChan <- result{info: info}
 	}()
 
 	// send execspec
-	if err := json.NewEncoder(tf.WarmContainer.Conn).Encode(&tr.TestAgentExecSpec); err != nil {
+	if err := json.NewEncoder(warmCont.Conn).Encode(&tr.TestAgentExecSpec); err != nil {
 		t.Errorf("Failed sending execspec JSON: %v", err)
 	}
 

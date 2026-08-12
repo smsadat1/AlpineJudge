@@ -22,26 +22,26 @@ func Test_Orchestrator(t *testing.T) {
 	defer cancel()
 
 	tr := pkg.NewRunnerTestRepository(t)
-	tf := pkg.NewRunnerTestFactory(t)
-	tf.StartTestMinioS3(t, ctx)
-	tf.StartTestRMQ(t, ctx)
-	tf.GetWarmContainer(t, cCtx)
+	// tf := pkg.NewRunnerTestFactory(t)
+	// tf.StartTestMinioS3(t, ctx)
+	// tf.StartTestRMQ(t, ctx)
+	warmCont := SharedTF.GetWarmContainer(t, cCtx)
 
 	// upload artifacts to S3 first ==============
 	srcFileData, err := os.Open("../examples/main.cpp")
 	if err != nil {
 		t.Fatalf("Failed to get source submission file: %v", err)
 	}
-	if err := tf.S3m.UploadFileToS3(ctx, tr.TestJobSpec.SrcCodeS3Key, srcFileData); err != nil {
+	if err := SharedTF.S3m.UploadFileToS3(ctx, tr.TestJobSpec.SrcCodeS3Key, srcFileData); err != nil {
 		t.Fatalf("Failed to upload source file: %v", err)
 	}
-	if err := tf.S3m.UploadDirToS3(ctx, tr.TestJobSpec.TestsetS3Key, "../examples/ts001"); err != nil {
+	if err := SharedTF.S3m.UploadDirToS3(ctx, tr.TestJobSpec.TestsetS3Key, "../examples/ts001"); err != nil {
 		t.Fatalf("Failed to upload testsests: %v", err)
 	}
 
 	// get events from RMQ
 	interceptorQueue := make(chan amqp.Delivery, 100)
-	if err := tf.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
+	if err := SharedTF.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
 		t.Fatalf("Failed to subscribe to queue: %v", err)
 	}
 
@@ -80,7 +80,7 @@ func Test_Orchestrator(t *testing.T) {
 	execChan := make(chan result, 1)
 
 	go func() {
-		info, err := pkg.OrchestrateSubm(ctx, cCtx, tf.WarmContainer, *tf.S3m, tr.TestJobSpec, *tf.Rmqm)
+		info, err := pkg.OrchestrateSubm(ctx, cCtx, warmCont, *SharedTF.S3m, tr.TestJobSpec, *SharedTF.Rmqm)
 		execChan <- result{info: info, err: err}
 	}()
 
