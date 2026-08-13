@@ -119,7 +119,7 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		*env.ctx,
 		execEventQueue,
 		uniqueConsumerTag,
-		os.Getenv("RABBITMQ_QUEUE_NAME"),
+		os.Getenv("RABBITMQ_SSE_QUEUE_NAME"),
 	); err != nil {
 		http.Error(w, "Execution event queue failed!", http.StatusInternalServerError)
 		return
@@ -143,33 +143,6 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (env *ServerEnv) ResultReciever(w http.ResponseWriter, r *http.Request) {
-
-	jobID := r.PathValue("submission_id")
-	if jobID == "" {
-		http.Error(w, "Missing job reference id parameter", http.StatusBadRequest)
-		return
-	}
-
-	bucket := env.bucket
-	key := "/submission/" + jobID + "/result.json"
-	resultFile := fmt.Sprintf("/tmp/result_%s.json", jobID)
-
-	/*
-		TODO:
-		Instead of writing to a local file then sending back.
-		Directly stream back from S3 to client
-	*/
-
-	if err := env.s3m.DownloadFileFromS3(*env.ctx, bucket, key, resultFile); err != nil {
-		http.Error(w, "Failed fetching result\n", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"status":"fetched","job_id":"%s"}`, jobID)
-}
-
 func InitHTTPServer(
 	ctx context.Context, s3m *shared.S3Manager, rmqm *shared.RMQManager,
 ) *http.Server {
@@ -178,7 +151,7 @@ func InitHTTPServer(
 		ctx:    &ctx,
 		s3m:    s3m,
 		rmqm:   rmqm,
-		bucket: os.Getenv("S3_BUCKET_NAME"),
+		bucket: os.Getenv("MINIO_S3_BUCKET"),
 	}
 
 	mux := http.NewServeMux()
@@ -186,9 +159,8 @@ func InitHTTPServer(
 	mux.HandleFunc("GET /", env.ResponseRootHanlder)
 	mux.HandleFunc("POST /submit", env.SubmissionReciever)
 	mux.HandleFunc("GET /submissions/{submission_id}/events", env.SSEHandler)
-	mux.HandleFunc("GET /submissions/{submission_id}/result", env.ResultReciever)
 
-	serverPort := ":8080"
+	serverPort := ":1111"
 	fmt.Printf("Starting server on http://localhost%s\n", serverPort)
 
 	return &http.Server{

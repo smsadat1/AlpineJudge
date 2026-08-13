@@ -8,7 +8,6 @@ import (
 	"utils"
 
 	"github.com/containerd/containerd"
-	"github.com/joho/godotenv"
 )
 
 /*
@@ -19,9 +18,9 @@ func Runner() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	godotenv.Load(".env")
+	// godotenv.Load(".env")
 
-	rmqm, err := shared.NewRMQManager(ctx, os.Getenv("RABBITMQ_URL_DEV"))
+	rmqm, err := shared.NewRMQManager(ctx, os.Getenv("RABBITMQ_URL"))
 	if err != nil {
 		log.Fatalf("Fatal: RabbitMQ connection broken: %v", err)
 	}
@@ -30,11 +29,11 @@ func Runner() {
 	log.Println("Initializing S3...")
 	s3m, err := shared.InitS3Manager(
 		ctx,
-		os.Getenv("S3_BUCKET_NAME"),
-		os.Getenv("S3_REGION_NAME"),
-		os.Getenv("S3_USERNAME_DEV"),
-		os.Getenv("S3_PASSWORD_DEV"),
-		os.Getenv("S3_URL_DEV"),
+		os.Getenv("MINIO_S3_BUCKET"),
+		os.Getenv("MINIO_S3_REGION_NAME"),
+		os.Getenv("MINIO_S3_USERNAME"),
+		os.Getenv("MINIO_S3_PASSWORD"),
+		os.Getenv("MINIO_S3_API"),
 	)
 	if err != nil {
 		log.Fatalf("Fatal: S3 Storage initialization aborted: %v", err)
@@ -51,7 +50,7 @@ func Runner() {
 		Client:    client,
 		S3:        s3m,
 		Rmq:       rmqm,
-		JobQueue:  os.Getenv("RABBITMQ_JOB_QUEUE_NAME"),
+		JobQueue:  os.Getenv("RABBITMQ_QUEUE_NAME"),
 		SSEQueue:  os.Getenv("RABBITMQ_SSE_QUEUE_NAME"),
 		Namespace: os.Getenv("CONTAINER_NAMESPACE"),
 	}

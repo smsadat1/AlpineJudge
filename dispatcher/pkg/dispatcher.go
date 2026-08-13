@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"dispatcher/internal"
+
 	// "dispatcher/internal"
 	"errors"
 	"log"
@@ -12,8 +13,6 @@ import (
 	"shared"
 	"syscall"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 func Dispatcher() {
@@ -24,23 +23,13 @@ func Dispatcher() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// 1. envs & cofigs ingestion
-	if err := godotenv.Load("dispatcher.example.env"); err != nil {
-		log.Fatal("Failed to load dispatcher env vars\n")
-	}
-
-	log.Println("Loading dispatcher configurations...")
-	if err := internal.LoadConfigs("config.example.yaml"); err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	// 2. initialize infrastructures
+	// 1. initialize infrastructures
 	log.Println("Initiating S3 storage...")
 	bucket := os.Getenv("MINIO_S3_BUCKET")
-	region := os.Getenv("S3_REGION_NAME")
-	accessKey := os.Getenv("S3_USERNAME_DEV")
-	secretKey := os.Getenv("S3_PASSWORD_DEV")
-	s3Endpoint := os.Getenv("S3_ENDPOINT_DEV")
+	region := os.Getenv("MINIO_S3_REGION_NAME")
+	accessKey := os.Getenv("MINIO_S3_USERNAME")
+	secretKey := os.Getenv("MINIO_S3_PASSWORD")
+	s3Endpoint := os.Getenv("MINIO_S3_API")
 
 	s3m, err := shared.InitS3Manager(ctx, bucket, region, accessKey, secretKey, s3Endpoint)
 	if err != nil {
@@ -48,10 +37,13 @@ func Dispatcher() {
 	}
 
 	log.Println("Initiating RMQ connection...s")
-	amqpURL := os.Getenv("RABBITMQ_URL_DEV")
+	amqpURL := os.Getenv("RABBITMQ_URL")
 	if amqpURL == "" {
 		log.Fatal("RMQ url not found in environment!\n")
 	}
+
+	log.Printf("S3 bucket: %v | region: %v | accesskey: %v | secretkey: %v | S3 endpoint: %v | RMQ: %v\n",
+		bucket, region, accessKey, secretKey, s3Endpoint, amqpURL)
 
 	rmqMgr, err := shared.NewRMQManager(ctx, amqpURL)
 	if err != nil {
@@ -65,7 +57,7 @@ func Dispatcher() {
 	log.Println("Starting Dispatcher HTTP server...")
 	server := internal.InitHTTPServer(ctx, s3m, rmqMgr)
 
-	// 3. background HTTP server listener to make it non-blocking
+	// 2. background HTTP server listener to make it non-blocking
 	go func() {
 		log.Printf("Dispatcher listening securely on %s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -77,7 +69,7 @@ func Dispatcher() {
 	<-ctx.Done()
 	log.Println("Termination signal caught! Initiating graceful teardown protocol...")
 
-	// 4. raceful shutdown Phase
+	// 3. raceful shutdown Phase
 	// Force-kill the HTTP engine if it takes longer than 5 seconds to clear out pending traffic
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()

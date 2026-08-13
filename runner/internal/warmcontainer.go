@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"sync"
@@ -46,6 +47,8 @@ func CreateWarmContainer(ctx context.Context, client *containerd.Client, slotID 
 	containerID := generateContainerID()
 	snapshotID := containerID + "-snapshot"
 
+	log.Printf("Creating container with containerID: %v | snapshotID: %v\n", containerID, snapshotID)
+
 	container, err := client.NewContainer(
 		ctx,
 		containerID,
@@ -53,12 +56,12 @@ func CreateWarmContainer(ctx context.Context, client *containerd.Client, slotID 
 		containerd.WithImage(image),
 		containerd.WithNewSpec(opts...),
 
-		// correct runtime name format requires full name of binary "runc" isn't enough
+		// correct runtime name format requires full name of binary, "runc" isn't enough
 		containerd.WithRuntime("io.containerd.runc.v2", nil),
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed created container with ID %v", err)
+		return nil, fmt.Errorf("Failed creating container with ID %v", err)
 	}
 
 	// create related socket file on host before container boots
@@ -115,7 +118,7 @@ func CreateWarmContainer(ctx context.Context, client *containerd.Client, slotID 
 		return nil, fmt.Errorf("agent failed to connect: %w", err)
 	}
 
-	// log.Printf("Successfully initiated container with ID %s and snapshot with ID %v", container.ID(), snapshotID)
+	// log.Printf("Successfully initiated warmed container with ID %s and snapshot with ID %v", container.ID(), snapshotID)
 	wc := WarmContainer{
 		Container:  container,
 		Task:       task,

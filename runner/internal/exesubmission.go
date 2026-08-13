@@ -15,7 +15,6 @@ import (
 	"utils"
 
 	containerd "github.com/containerd/containerd"
-	"github.com/joho/godotenv"
 )
 
 func (wc *WarmContainer) ExecSubm(
@@ -74,7 +73,7 @@ func (wc *WarmContainer) ExecSubm(
 
 	// Handle timeouts & exit
 
-	godotenv.Load(".env")
+	// godotenv.Load(".env")
 	timeouts, _ := strconv.ParseInt(os.Getenv("TIMEOUT_SEC"), 10, 64)
 	timeoutDuration := time.Duration(timeouts) * time.Second
 	ctxTimeout, cancel := context.WithTimeout(ctx, timeoutDuration)

@@ -8,7 +8,6 @@ import (
 	"utils"
 
 	oci "github.com/containerd/containerd/oci"
-	"github.com/joho/godotenv"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -42,15 +41,13 @@ This also avoid the bootstrap problem for the in-container agent (ajagent)
 */
 func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 
-	godotenv.Load(".env")
+	// godotenv.Load(".env")
 
 	cpuQuota, _ := strconv.ParseFloat(os.Getenv("CPU_QUOTA"), 64)
 	memLimitMB, _ := strconv.ParseUint(os.Getenv("MEMORY_LIMIT_MB"), 10, 64)
 	pidLimit, _ := strconv.ParseInt(os.Getenv("PID_LIMIT"), 10, 64)
 	nnp, _ := strconv.ParseBool(os.Getenv("NO_NEW_PRIVILEGES"))
 	rroRootfs, _ := strconv.ParseBool(os.Getenv("READONLY_ROOTFS"))
-
-	fmt.Printf("CQ: %v ML: %v PID: %v NNP: %v RRO: %v\n", cpuQuota, memLimitMB, pidLimit, nnp, rroRootfs)
 
 	memoryBytes := uint64(memLimitMB * 1024 * 1024)
 	period := uint64(100000) // 100 ms period
@@ -111,6 +108,9 @@ func build_ociSpecOpts(slotID uint32) []oci.SpecOpts {
 
 	// evaluated last to guarantee execution parameters survive
 	opts = append(opts, oci.WithProcessArgs("/usr/bin/ajagent"))
+
+	// log.Printf("Built OCI specs with following parameters:  \nCpu Quota: %v \nMemory: %v \nPID limiy: %v \nNNP: %v \nRRO: %v\n",
+	// 	cpuQuota, memLimitMB, pidLimit, nnp, rroRootfs)
 
 	return opts
 }
