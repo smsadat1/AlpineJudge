@@ -14,16 +14,16 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_WA(t *testing.T) {
+func Test_ExecSubm_TLE_OrphanedProc(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
 	tr := pkg.NewRunnerTestRepository(t)
-	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/wrongans.cpp", tr.TestJobSpec.SubmissionID)
+	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/doublefork.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/wrongans.cpp")
+	tr.CopyFiles(t, "../examples/doublefork.cpp")
 
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
@@ -39,7 +39,7 @@ func Test_ExecSubm_WA(t *testing.T) {
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
 		defer close(eventsDone)
-		counter := 0
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -53,9 +53,8 @@ func Test_ExecSubm_WA(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				counter++
 				assert.String(t, "INFO", testEventStream.Type)
-				assert.String(t, fmt.Sprintf("Wrong answer in test %v", counter), testEventStream.Status)
+				assert.String(t, "Time limit exceeded", testEventStream.Status)
 			}
 		}
 	}()
@@ -87,16 +86,12 @@ func Test_ExecSubm_WA(t *testing.T) {
 
 	<-eventsDone
 
+	assert.String(t, tr.TestJobSpec.SubmissionID, contInfo.SubmissionId)
+	assert.String(t, tr.TestJobSpec.Language, contInfo.Language)
+
 	t.Logf(`Container lifecycle data
-			SubmissionID: %v
-			Language: %v
-			Version: %v
-			Elapsed time: %vms
-			Status: %v
-			StatusInfo: %v
+			Elapsed time: %vms | Status: %v | StatusInfo: %v
 			Stderr: %v
 			Stdout: %v`,
-		contInfo.SubmissionId, contInfo.Language, contInfo.Version,
 		contInfo.Interval, contInfo.Status, contInfo.StatusInfo, contInfo.ContainerStderr, contInfo.ContainerStdout)
-
 }

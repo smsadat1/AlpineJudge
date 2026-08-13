@@ -15,18 +15,16 @@ import (
 )
 
 func Test_ExecSubm_RE_FDBomb(t *testing.T) {
+
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
-	// tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/filebomb.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/filebomb.cpp")
 
-	// tf.StartTestMinioS3(t, ctx)
-	// tf.StartTestRMQ(t, ctx)
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
 	// get events from RMQ

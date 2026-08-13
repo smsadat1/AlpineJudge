@@ -20,7 +20,6 @@ func Test_ExecSubm_CE(t *testing.T) {
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
-	// tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/compileer.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)

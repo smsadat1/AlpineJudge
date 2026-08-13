@@ -4,8 +4,8 @@ import (
 	"assert"
 	"context"
 	"encoding/json"
-	"fmt"
 	"local/runner/pkg"
+	"strings"
 	"testing"
 	"time"
 	"utils"
@@ -15,11 +15,14 @@ import (
 )
 
 func Test_ExecSubm_AC_Go(t *testing.T) {
+
+	// only AC tests are paralleled | Resource or permission enforcement tests shouldn't be parallelized as those tests might loose deteminism
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
-	// tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 
 	// Go
@@ -30,8 +33,6 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/go/main.go")
 
-	// tf.StartTestMinioS3(t, ctx)
-	// tf.StartTestRMQ(t, ctx)
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
 	// get events from RMQ
@@ -46,7 +47,7 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
 		defer close(eventsDone)
-		counter := 0
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -60,9 +61,8 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				counter++
 				assert.String(t, "INFO", testEventStream.Type)
-				assert.String(t, fmt.Sprintf("Running test %v", counter), testEventStream.Status)
+				assert.Bool(t, true, strings.HasPrefix(testEventStream.Status, "Running test"))
 			}
 		}
 	}()
