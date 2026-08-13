@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,7 +48,16 @@ func InitRunner(ctx context.Context, deps utils.EngineDeps) {
 	cCtx := namespaces.WithNamespace(ctx, deps.Namespace)
 
 	// create warm continaers | conainerQueue is buffered with MAX_CONTAINER_CAP(15 for now) , if made unbuffered, runner will freeze shortly
-	containerQueue := make(chan *internal.WarmContainer, 15)
+	cqcap, ok := os.LookupEnv("CONTAINER_QUEUECAP")
+	if !ok {
+		log.Fatal("Failed retrieve CONTAINER_QUEUECAP from env")
+	}
+	maxWarmContianers, err := strconv.ParseInt(cqcap, 10, 32)
+	if err != nil {
+		log.Fatalf("Failed to convert CONTAINER_QUEUECAP to int value: %v\n", err)
+	}
+
+	containerQueue := make(chan *internal.WarmContainer, maxWarmContianers)
 	countContainer := 0
 	var slotCounter atomic.Uint32 // Used atomic counter to prevent concurrency issues affecting slotID uniqueness
 
