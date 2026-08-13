@@ -20,7 +20,6 @@ func NewDispatcherRepository(t *testing.T) TestRepository {
 
 	tss := internal.SubmissionSpec{
 		SubmissionID: "testsub001",
-		Bucket:       "testbucket",
 		Language:     "cpp",
 		Source:       `#include<iostream> int main() {return 0;}`,
 		Testset:      "ts001",

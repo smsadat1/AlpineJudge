@@ -9,7 +9,7 @@ type JobSpec struct {
 	Bucket               string `json:"s3_bucket"`
 	SrcCodeS3Key         string `json:"src_code_s3key"`
 	TestsetS3Key         string `json:"testset_s3Key"`
-	Testset              string `json:"testset"`
+	Testset              string `json:"testset_id"`
 	TestsetVersion       string `json:"testset_version"`
 	SSEQueue             string `json:"sse_queue"`
 	PerTestMemoryLimitMB uint64 `json:"per_test_memory_limit_mb"`
