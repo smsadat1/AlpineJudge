@@ -8,13 +8,11 @@ import (
 
 // Original "SubmissionSpec" is in dispatcher, copied here for shared infra test purpose
 type SubmissionSpec_Copy struct {
-	SubmissionID   string `json:"submission_id"`
-	Bucket         string `json:"bucket"`
-	Language       string `json:"language"`
-	Version        string `json:"version"`
-	Source         string `json:"source"`
-	Testset        string `json:"testset"`
-	TestsetVersion string `json:"testset_version"`
+	SubmissionID string `json:"submission_id"`
+	Bucket       string `json:"bucket"`
+	Language     string `json:"language"`
+	Source       string `json:"source"`
+	Testset      string `json:"testset"`
 }
 
 type TestRepository struct {
@@ -29,13 +27,11 @@ func NewRepository(t *testing.T) TestRepository {
 	testsetID := "ts001"
 
 	tss := SubmissionSpec_Copy{
-		SubmissionID:   "testsub001",
-		Bucket:         "testbucket",
-		Language:       "cpp",
-		Version:        "c++17",
-		Source:         `#include<iostream> int main() {return 0;}`,
-		Testset:        "ts001",
-		TestsetVersion: "v1",
+		SubmissionID: "testsub001",
+		Bucket:       "testbucket",
+		Language:     "cpp",
+		Source:       `#include<iostream> int main() {return 0;}`,
+		Testset:      "ts001",
 	}
 
 	tjs := shared.JobSpec{
