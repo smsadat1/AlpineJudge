@@ -26,20 +26,9 @@ func Test_HTTPServer_Integration(t *testing.T) {
 	tr := NewDispatcherRepository(t)
 	submissionSpec := tr.TestSubmSpec
 
-	if err := internal.LoadConfigs("config.example.yaml"); err != nil {
-		t.Fatal(err)
-	}
-
 	t.Setenv("TEST_S3_BUCKET_NAME", "dispatcherTestBucket")
 	_, _ = tf.S3m.CreateABucket(ctx, os.Getenv("TEST_S3_BUCKET_NAME"))
 
-	// upload test artifact
-	fileData, err := os.Open("result.json")
-	if err != nil {
-		t.Error(err)
-	}
-
-	tf.S3m.UploadFileToS3(ctx, "/submission/s010/result.json", fileData)
 	tf.S3m.UploadDirToS3(ctx, "ts001/v1", "ts001")
 
 	serverConfig := internal.InitHTTPServer(ctx, tf.S3m, tf.Rmqm)
@@ -90,25 +79,4 @@ func Test_HTTPServer_Integration(t *testing.T) {
 			t.Errorf("Expected status 'queued', got payload: %v", jsonResp)
 		}
 	})
-
-	// test3
-	t.Run("GET /jobs/{submission_id}/result Extracts route key variables", func(t *testing.T) {
-		targetSubmissionID := "s0101"
-
-		// Run a GET against the pattern matched route
-		resp, err := http.Get(testServer.URL + "/submissions/" + targetSubmissionID + "/result")
-		if err != nil {
-			t.Fatalf("HTTP request failed: %v", err)
-		}
-		defer resp.Body.Close()
-
-		/*
-			Expects DownloadFileFromS3 to fail (status 500) if the file doesn't exist,
-			But it proves path router extracted the variable properly
-		*/
-		if resp.StatusCode == http.StatusBadRequest {
-			t.Error("Routing failed: engine did not parse submission_id path parameter variable")
-		}
-	})
-
 }

@@ -38,9 +38,6 @@ func Test_Dispatcher_Subsystem_E2E(t *testing.T) {
 		t.Fatalf("E2E Setup Error: Failed to register test consumer: %v", err)
 	}
 
-	// MUST load configs or else test fails with nil
-	internal.LoadConfigs("config.example.yaml")
-
 	// boot actual server mux inside a Live Test HTTP Container
 	serverConfig := internal.InitHTTPServer(ctx, tf.S3m, tf.Rmqm)
 	ts := httptest.NewServer(serverConfig.Handler)

@@ -19,13 +19,11 @@ func NewDispatcherRepository(t *testing.T) TestRepository {
 	testsetID := "ts001"
 
 	tss := internal.SubmissionSpec{
-		SubmissionID:   "testsub001",
-		Bucket:         "testbucket",
-		Language:       "cpp",
-		Version:        "c++17",
-		Source:         `#include<iostream> int main() {return 0;}`,
-		Testset:        "ts001",
-		TestsetVersion: "v1",
+		SubmissionID: "testsub001",
+		Bucket:       "testbucket",
+		Language:     "cpp",
+		Source:       `#include<iostream> int main() {return 0;}`,
+		Testset:      "ts001",
 	}
 
 	tjs := shared.JobSpec{
