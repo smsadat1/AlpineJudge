@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"local/runner/internal"
 	"log"
+	"math/rand"
 	"os"
 	"shared"
 	"testing"
@@ -133,7 +134,7 @@ func (tf *TestFactory) GetWarmContainer(t *testing.T, ctx context.Context) *inte
 	t.Helper()
 
 	var testSlotID uint32
-	testSlotID = 777
+	testSlotID = uint32(rand.Intn(999))
 
 	client, err := containerd.New("/run/containerd/containerd.sock")
 	if err != nil {
