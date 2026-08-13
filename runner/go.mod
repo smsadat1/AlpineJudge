@@ -6,7 +6,6 @@ require (
 	github.com/containerd/containerd v1.7.33
 	github.com/containerd/containerd/v2 v2.3.3
 	github.com/jaevor/go-nanoid v1.4.0
-	github.com/joho/godotenv v1.5.1
 	github.com/rabbitmq/amqp091-go v1.12.0
 	github.com/testcontainers/testcontainers-go v0.43.0
 	github.com/testcontainers/testcontainers-go/modules/minio v0.43.0
