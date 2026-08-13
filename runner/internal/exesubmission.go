@@ -31,7 +31,7 @@ func (wc *WarmContainer) ExecSubm(
 		Language:        jobspec.Language,
 		Version:         jobspec.Version,
 		Interval:        0,
-		Status:          "Pending",
+		Status:          "PENDING",
 		StatusInfo:      "",
 		ContainerStdout: "",
 		ContainerStderr: "",
@@ -91,12 +91,12 @@ func (wc *WarmContainer) ExecSubm(
 		contInfo.Interval = uint64(elapsedMS)
 
 		if status.ExitCode() == 0 {
-			contInfo.Status = utils.VerdictAC
+			contInfo.Status = "OK"
 			contInfo.StatusInfo = "Container exited normally"
 			contInfo.ContainerStderr = stderrWrite.String()
 			contInfo.ContainerStdout = stdoutWriter.String()
 		} else {
-			contInfo.Status = utils.VerdictRE
+			contInfo.Status = "ERROR"
 			contInfo.StatusInfo = fmt.Sprintf("Container exited with code %d", status.ExitCode())
 			contInfo.ContainerStderr = stderrWrite.String()
 			contInfo.ContainerStdout = stdoutWriter.String()
@@ -105,7 +105,7 @@ func (wc *WarmContainer) ExecSubm(
 		// TLE
 		elapsedMS := time.Since(start).Milliseconds()
 		contInfo.Interval = uint64(elapsedMS)
-		contInfo.Status = utils.VerdictTLE
+		contInfo.Status = "ERROR"
 		contInfo.StatusInfo = fmt.Sprintf("Task exceeded time limit of %d seconds", timeoutDuration)
 		contInfo.ContainerStderr = stderrWrite.String()
 		contInfo.ContainerStdout = stdoutWriter.String()
