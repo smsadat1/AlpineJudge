@@ -51,6 +51,11 @@ func Test_ExecSubm_IE(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
+				if testEventStream.Type == "RESULT" {
+					assert.String(t, "Internal error", testEventStream.Status)
+					break // Type RESULT means stream has ended
+				}
+
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.String(t, "Internal error", testEventStream.Status)
 				assert.String(t, "exec: no command", testEventStream.Details)

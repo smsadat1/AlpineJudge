@@ -16,9 +16,6 @@ import (
 
 func Test_ExecSubm_AC_C(t *testing.T) {
 
-	// only AC tests are paralleled | Resource or permission enforcement tests shouldn't be parallelized as those tests might loose deteminism
-	t.Parallel()
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
@@ -54,6 +51,11 @@ func Test_ExecSubm_AC_C(t *testing.T) {
 
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
+
+				if testEventStream.Type == "RESULT" {
+					assert.String(t, "Accepted", testEventStream.Status)
+					break // Type RESULT means stream has ended
+				}
 
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.Bool(t, true, strings.HasPrefix(testEventStream.Status, "Running test"))

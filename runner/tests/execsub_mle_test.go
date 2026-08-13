@@ -55,6 +55,11 @@ func Test_ExecSubm_MLE(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
+				if testEventStream.Type == "RESULT" {
+					assert.String(t, "Memory limit exceeded", testEventStream.Status)
+					break // Type RESULT means stream has ended
+				}
+
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.String(t, "Memory limit exceeded", testEventStream.Status)
 			}

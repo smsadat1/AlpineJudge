@@ -72,6 +72,11 @@ func Test_InitRunner(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
+				if testEventStream.Type == "RESULT" {
+					assert.String(t, "Accepted", testEventStream.Status)
+					break // Type RESULT means stream has ended
+				}
+
 				counter++
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.String(t, fmt.Sprintf("Running test %v", counter), testEventStream.Status)

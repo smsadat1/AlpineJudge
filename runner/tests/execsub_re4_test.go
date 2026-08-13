@@ -53,6 +53,11 @@ func Test_ExecSubm_RE_ThreadSpam(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
+				if testEventStream.Type == "RESULT" {
+					assert.String(t, "Runtime error", testEventStream.Status)
+					break // Type RESULT means stream has ended
+				}
+
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.String(t, "Runtime error", testEventStream.Status)
 			}

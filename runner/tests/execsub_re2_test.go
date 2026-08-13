@@ -45,7 +45,7 @@ func Test_ExecSubm_RE_Network(t *testing.T) {
 	// Goroutine reading events cleanly with context cancellation
 	go func() {
 		defer close(eventsDone)
-		counter := 0
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -59,7 +59,11 @@ func Test_ExecSubm_RE_Network(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				counter++
+				if testEventStream.Type == "RESULT" {
+					assert.String(t, "Runtime error", testEventStream.Status)
+					break // Type RESULT means stream has ended
+				}
+
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.String(t, "Runtime error", testEventStream.Status)
 			}

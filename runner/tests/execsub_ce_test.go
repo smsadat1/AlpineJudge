@@ -25,8 +25,6 @@ func Test_ExecSubm_CE(t *testing.T) {
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/compileerr.cpp")
 
-	// tf.StartTestMinioS3(t, ctx)
-	// tf.StartTestRMQ(t, ctx)
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
 	// get events from RMQ
@@ -53,6 +51,11 @@ func Test_ExecSubm_CE(t *testing.T) {
 
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
+
+				if testEventStream.Type == "RESULT" {
+					assert.String(t, "Compilation error", testEventStream.Status)
+					break // Type RESULT means stream has ended
+				}
 
 				assert.String(t, "ERROR", testEventStream.Type)
 				assert.String(t, "Compilation error", testEventStream.Status)

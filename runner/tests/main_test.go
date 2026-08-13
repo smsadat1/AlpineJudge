@@ -10,6 +10,12 @@ import (
 // global shared test objects
 var SharedTF *pkg.TestFactory
 
+/*
+Yes, many tests in this group can be paralleled but it gives little ROI
+Tests of these group are all about whether a singla pass in the pipeline works as is
+Where parallelism reduces chances to determine that introduces undesired race conditions to test itsel
+Requiring extra effort to handle race conditions that aren't even part of the engine itself
+*/
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
