@@ -30,11 +30,12 @@ func RunnerAgent() {
 	// 1. Find & connect to event stream socket
 	socketPath := os.Getenv("STREAM_SOCKET_PATH")
 	if socketPath == "" {
-		socketPath = "/tmp/ajagent.sock" // Safe default
+		socketPath = "/tmp/ajagent.sock" // Safe default (this shouldn't happen | if happen then there's more to investigate... maybe upstream)
 	}
 
 	streamConn, err := net.Dial("unix", socketPath)
 	if err != nil {
+		// can't stream event when socket connection itself fails, for this case log will appear in contInfo later after container exits
 		log.Fatalf("Fatal: unable to connect to host stream socket: %v", err)
 	}
 	defer streamConn.Close()
@@ -59,6 +60,7 @@ func RunnerAgent() {
 			FATAL, verdictIE, "", "",
 			fmt.Sprintf("Failed to unmarshal execspec: %v\n", err),
 		)
+		sendResult(streamConn, verdictIE)
 		return
 	}
 
@@ -77,6 +79,7 @@ func RunnerAgent() {
 				ERROR, verdictCE,
 				stdout.buf.String(), stderr.buf.String(), "",
 			)
+			sendResult(streamConn, "Compilation error")
 			return
 		}
 	}
@@ -103,6 +106,7 @@ func RunnerAgent() {
 				verdictIE, "", "",
 				fmt.Sprintf("%v", err),
 			)
+			sendResult(streamConn, verdictIE)
 			break // break here to prevent infinite loop
 		}
 
@@ -119,9 +123,14 @@ func RunnerAgent() {
 			runInfo.Verdict == verdictOLE ||
 			runInfo.Verdict == verdictMLE ||
 			runInfo.Verdict == verdictIE {
+
+			sendResult(streamConn, runInfo.Verdict)
 			break
 		}
-		if runInfo.Verdict == verdictWA && execSpec.HaltOnFirstError {
+
+		// when HaltOnFirstError is true, stop right after recieving first WA
+		if execSpec.HaltOnFirstError && runInfo.Verdict != verdictOK {
+			sendResult(streamConn, verdictWA)
 			break
 		}
 	}
@@ -133,5 +142,9 @@ func RunnerAgent() {
 			verdictIE, "", "",
 			fmt.Sprintf("No valid testcases or in.txt files found in '%s'", testsetPath),
 		)
+		sendResult(streamConn, verdictIE)
 	}
+
+	// everything went well, all tests passed without any issues
+	sendResult(streamConn, verdictAC)
 }

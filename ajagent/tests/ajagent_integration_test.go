@@ -37,6 +37,12 @@ func Test_RunnerAgent_Integration_Ok(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Accepted", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, fmt.Sprintf("Running test %v", counter), event.Status)
 		}
@@ -76,6 +82,12 @@ func Test_RunnerAgent_Integration_HFE(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Wrong answer", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, fmt.Sprintf("Wrong answer in test %v", counter), event.Status)
 		}
@@ -111,6 +123,12 @@ func Test_RunnerAgent_Integration_Abort(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Runtime error", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Runtime error", event.Status)
 		}
@@ -146,6 +164,12 @@ func Test_RunnerAgent_Integration_FPE(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Runtime error", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Runtime error", event.Status)
 		}
@@ -181,7 +205,12 @@ func Test_RunnerAgent_Integration_OLE(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
-			fmt.Printf("%v\n", event)
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Output limit exceeded", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Output limit exceeded", event.Status)
 		}
@@ -217,6 +246,12 @@ func Test_RunnerAgent_Integration_Segfault(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Runtime error", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Runtime error", event.Status)
 		}
@@ -252,6 +287,12 @@ func Test_RunnerAgent_Integration_IllInstruction(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Runtime error", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Runtime error", event.Status)
 		}
@@ -287,6 +328,12 @@ func Test_RunnerAgent_Integration_TLE(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+
+			if event.Type == "RESULT" {
+				th.Assert(t, "Time limit exceeded", event.Status)
+				break // when Type is RESULT, stream's ended
+			}
+
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Time limit exceeded", event.Status)
 		}

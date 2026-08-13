@@ -49,6 +49,7 @@ var DefaultLimits = SandboxLimits{
 	Timeout:        2 * time.Second,
 }
 
+// CAN NOT afford to fail (must succeed or as backup contInfo can be investigated later after container exits to find out issues)
 func sendEvent(
 	conn net.Conn, evntype string, status string, stdout string, stderr string, msg string,
 ) {
@@ -62,5 +63,19 @@ func sendEvent(
 		Stderr:  stderr,
 		Details: msg,
 	}
+
+	// succeed or move on, can't wait during live stream
 	_ = streamEnconder.Encode(evt)
+}
+
+/*
+Convenient wrapper over sendEvent() for result stream
+This may look redundant but Type RESULT is what signals client that event stream has ended
+So it's sent over unix socket no matter the verdict
+Only top level AjAgent should call it, not internal runtime manager runTestCase(). Calling it during runtime defeats it's purpose
+*/
+func sendResult(conn net.Conn, status string) {
+	eventType := "RESULT"
+	// no more stdout stderr with result, all stdout stderr sent during execution stream
+	sendEvent(conn, eventType, status, "", "", "")
 }
