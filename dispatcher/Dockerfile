@@ -5,7 +5,10 @@ WORKDIR /app
 
 COPY dispatcher/ ./dispatcher
 COPY shared/ ./shared
+
+# src is built around go work space so it needs go.work
 RUN go work init ./dispatcher ./shared
+
 COPY dispatcher/go.mod dispatcher/go.sum ./
 RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o ajdispatcher ./dispatcher/cmd

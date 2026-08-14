@@ -33,7 +33,7 @@ func ValidateSubmission(ctx context.Context, s3m shared.S3Manager, submission Su
 	}
 
 	// check testset & testsetVer
-	ok, err := s3m.CheckS3Dir(ctx, string(testset+"/"))
+	ok, err := s3m.CheckS3Dir(ctx, submission.Testset)
 
 	if !ok {
 		return fmt.Errorf("Testset: %v not found in S3", testset)

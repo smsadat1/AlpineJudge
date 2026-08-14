@@ -46,7 +46,6 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusMethodNotAllowed, fmt.Errorf("Method not allowed"))
 		return
 	}
-	jobID := r.PathValue("submission_id")
 
 	var submission SubmissionSpec
 
@@ -76,7 +75,7 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 	//package message data frame for RabbitMQ delivery
 	msg := amqp.Publishing{
 		ContentType: "application/json",
-		MessageId:   jobID,
+		MessageId:   submission.SubmissionID,
 		Body:        bodyBytes,
 	}
 
@@ -93,7 +92,7 @@ func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(map[string]string{
-		"status": "Queued", "job_id": jobID,
+		"status": "Queued", "submission_id": submission.SubmissionID,
 	})
 }
 
@@ -156,7 +155,8 @@ func InitHTTPServer(
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /", env.ResponseRootHanlder)
+	// {$} make matches ONLY the exact root path "/"
+	mux.HandleFunc("GET /{$}", env.ResponseRootHanlder)
 	mux.HandleFunc("POST /submit", env.SubmissionReciever)
 	mux.HandleFunc("GET /submissions/{submission_id}/events", env.SSEHandler)
 
