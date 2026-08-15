@@ -161,11 +161,11 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 		t.Errorf("Failed copying source submission file: %v | Written %v", err, wn)
 	}
 
-	testsetPath := "../examples/ts001"
+	testsetPath := "../examples/artifacts/ts001"
 
 	for i := 1; ; i++ {
-		input := filepath.Join(testsetPath, fmt.Sprintf("%03din.txt", i))
-		output := filepath.Join(testsetPath, fmt.Sprintf("%03dout.txt", i))
+		input := filepath.Join(testsetPath, fmt.Sprintf("%03d.in", i))
+		output := filepath.Join(testsetPath, fmt.Sprintf("%03d.out", i))
 
 		inData, err := os.ReadFile(input)
 		if os.IsNotExist(err) {

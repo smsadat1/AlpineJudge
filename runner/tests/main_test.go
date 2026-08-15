@@ -26,6 +26,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("TEST_S3_REGION_NAME", "us-east-1")
 	os.Setenv("TEST_RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
 	os.Setenv("RABBITMQ_QUEUE_NAME", "queue-001")
+	os.Setenv("TIMEOUT_SEC", "300")
 
 	tf := pkg.NewRunnerTestFactory()
 	tf.StartTestMinioS3(ctx)

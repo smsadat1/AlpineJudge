@@ -4,6 +4,7 @@ import (
 	"assert"
 	"context"
 	"encoding/json"
+	"fmt"
 	"local/runner/pkg"
 	"strings"
 	"testing"
@@ -39,12 +40,14 @@ func Test_ExecSubm_AC_C(t *testing.T) {
 	go func() {
 		defer close(eventsDone)
 
+		count := 0
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case delivery, ok := <-interceptorQueue:
 				if !ok {
+					t.Logf("TOTAL TESTS ASSERTED %v\n", count)
 					return
 				}
 				_ = delivery.Ack(false)
@@ -56,7 +59,8 @@ func Test_ExecSubm_AC_C(t *testing.T) {
 					assert.String(t, "Accepted", testEventStream.Status)
 					break // Type RESULT means stream has ended
 				}
-
+				fmt.Printf("%v\n", testEventStream)
+				count++
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.Bool(t, true, strings.HasPrefix(testEventStream.Status, "Running test"))
 			}

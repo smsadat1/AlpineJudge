@@ -72,8 +72,6 @@ func (wc *WarmContainer) ExecSubm(
 	}(wc.Conn)
 
 	// Handle timeouts & exit
-
-	// godotenv.Load(".env")
 	timeouts, _ := strconv.ParseInt(os.Getenv("TIMEOUT_SEC"), 10, 64)
 	timeoutDuration := time.Duration(timeouts) * time.Second
 	ctxTimeout, cancel := context.WithTimeout(ctx, timeoutDuration)
