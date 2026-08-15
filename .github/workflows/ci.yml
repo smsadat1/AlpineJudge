@@ -5,14 +5,16 @@ on:
       branches: [main]
       paths-ignore:
        - 'docs/**'
+       - 'sdk/**'
   pull_request:
       branches: [main]
       paths-ignore:
        - 'docs/**'
+       - 'sdk/**'
 
 jobs:
-  unit-tests: 
-    runs-on: ubuntu-latest 
+  test:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -21,36 +23,34 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-    
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.26'
-        
-      - name: Run ${{ matrix.module }} Tests
-        working-directory: ${{ matrix.module }}  
-        run : | 
-            go vet -v ./...
-            go test -race -v ./...
 
-  integration-tests:
-    needs: unit-tests
-    runs-on: ubuntu-latest 
-  
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-    
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-          
-      - name: Run Runner Tests
-        working-directory: runner
-        run: | 
+
+      - name: Run ajagent Tests
+        if: matrix.module == 'ajagent'
+        working-directory: ${{ matrix.module }}
+        run: |
+          cd tests && python generator.py && cd -
+          go vet -v ./...
+          go test -race -v ./...
+
+      - name: Run shared / dispatcher Tests
+        if: matrix.module == 'shared' || matrix.module == 'dispatcher'
+        working-directory: ${{ matrix.module }}
+        run: |
+          go vet -v ./...
+          go test -race -v ./...
+
+      - name: Run runner Tests
+        if: matrix.module == 'runner'
+        working-directory: ${{ matrix.module }}
+        run: |
           sudo rm -rf /tmp/rabbitmq-testcontainers*
           sudo systemctl start containerd
           sudo ctr -n test-namespace images pull ghcr.io/smsadat1/alpinejudge/master:test
+          cd examples && python generator.py && cd -
           sudo go vet -v ./...
           sudo go test -race -v ./...

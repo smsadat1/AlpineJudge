@@ -1,0 +1,21 @@
+name: Nightly Test
+
+on:
+  schedule: 
+    - cron: "0 2 * * *"
+  # for manual testing
+  workflow_dispatch:
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v4
+      
+      - name: Start services
+        run: docker compose up --build
+
+      - name: Wait for services 
+        run: docker compose ps 
+
+      # next steps should be testing the system as a whole with submissions
