@@ -3,9 +3,6 @@ package internal
 import (
 	"ajagent/tests"
 	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"utils"
 )
@@ -13,13 +10,11 @@ import (
 func run(t *testing.T, th *tests.TestHarness) {
 
 	t.Helper()
-	testsetPath := os.Getenv("TESTSET_PATH")
+	testsetPath := "../tests/artifacts/ts001"
 
 	for i := 1; ; i++ {
-		input := filepath.Join(testsetPath, fmt.Sprintf("%03din.txt", i))
-		output := filepath.Join(testsetPath, fmt.Sprintf("%03dout.txt", i))
-
-		if _, err := os.Stat(input); os.IsNotExist(err) {
+		input, output, exists := findTestcaseFiles(testsetPath, i)
+		if !exists {
 			break
 		}
 
@@ -31,7 +26,6 @@ func run(t *testing.T, th *tests.TestHarness) {
 			runInfo.Details,
 		)
 	}
-
 }
 
 func Test_runTestOK(t *testing.T) {
@@ -45,6 +39,7 @@ func Test_runTestOK(t *testing.T) {
 	go func() {
 		defer close(testServerDone)
 
+		count := 0
 		// accept the incoming connection from your agent runner
 		conn, err := th.Listener.Accept()
 		if err != nil {
@@ -59,9 +54,11 @@ func Test_runTestOK(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+			count++
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Output matched expectation", event.Details)
 		}
+		t.Logf("TOTAL EVENTS ASSERTED: %d", count)
 	}()
 
 	th.Compile(t)
@@ -81,6 +78,7 @@ func Test_runTestWA(t *testing.T) {
 	go func() {
 		defer close(testServerDone)
 
+		count := 0
 		// accept the incoming connection from your agent runner
 		conn, err := th.Listener.Accept()
 		if err != nil {
@@ -95,9 +93,11 @@ func Test_runTestWA(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+			count++
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Output mismatch against expected testcase answers", event.Details)
 		}
+		t.Logf("TOTAL EVENTS ASSERTED: %d", count)
 	}()
 
 	th.Compile(t)
@@ -117,6 +117,7 @@ func Test_runTestOLE(t *testing.T) {
 	go func() {
 		defer close(testServerDone)
 
+		count := 0
 		// accept the incoming connection from your agent runner
 		conn, err := th.Listener.Accept()
 		if err != nil {
@@ -131,9 +132,11 @@ func Test_runTestOLE(t *testing.T) {
 			if err := decoder.Decode(&event); err != nil {
 				break
 			}
+			count++
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, "Output limit exceeded", event.Status)
 		}
+		t.Logf("TOTAL EVENTS ASSERTED: %d", count)
 	}()
 
 	th.Compile(t)

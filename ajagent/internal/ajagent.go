@@ -3,13 +3,11 @@ package internal
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"utils"
 )
 
@@ -90,24 +88,9 @@ func RunnerAgent() {
 	testCount := 0
 
 	for i := 1; ; i++ {
-		input := filepath.Join(testsetPath, fmt.Sprintf("%03din.txt", i))
-		output := filepath.Join(testsetPath, fmt.Sprintf("%03dout.txt", i))
-
-		_, err := os.Stat(input)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				break // exit loop when testset ends
-			}
-
-			// real file error
-			sendEvent(
-				streamConn,
-				ERROR,
-				verdictIE, "", "",
-				fmt.Sprintf("%v", err),
-			)
-			sendResult(streamConn, verdictIE)
-			break // break here to prevent infinite loop
+		input, output, exist := findTestcaseFiles(testsetPath, i)
+		if !exist {
+			break // Stops when no file variant for index `i` is found
 		}
 
 		testCount = i
@@ -140,7 +123,7 @@ func RunnerAgent() {
 			streamConn,
 			ERROR,
 			verdictIE, "", "",
-			fmt.Sprintf("No valid testcases or in.txt files found in '%s'", testsetPath),
+			fmt.Sprintf("No valid testcases or .in files found in '%s'", testsetPath),
 		)
 		sendResult(streamConn, verdictIE)
 	}

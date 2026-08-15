@@ -46,6 +46,7 @@ func Test_RunnerAgent_Integration_Ok(t *testing.T) {
 			th.Assert(t, "INFO", event.Type)
 			th.Assert(t, fmt.Sprintf("Running test %v", counter), event.Status)
 		}
+		t.Logf("TOTAL TESTS ASSERTED: %v\n", counter)
 	}()
 
 	ajagent.RunnerAgent()
