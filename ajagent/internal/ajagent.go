@@ -62,7 +62,7 @@ func RunnerAgent() {
 		return
 	}
 
-	// 4. Compilation stage (if any | args supplied from instruction payload over unix socket)
+	// 4. Compilation stage(if any) (args supplied from instruction payload over unix socket)
 	if len(execSpec.CompileArgs) > 0 {
 		cmd := exec.Command(execSpec.CompileArgs[0], execSpec.CompileArgs[1:]...)
 		stdout := &LimitExceededWriter{limit: int64(execSpec.LogLimitKB) * 1000}
@@ -108,13 +108,13 @@ func RunnerAgent() {
 			runInfo.Verdict == verdictIE {
 
 			sendResult(streamConn, runInfo.Verdict)
-			break
+			return // breaking loop isn't enough, RETURN! so at the very last AC verdict isn't sent
 		}
 
 		// when HaltOnFirstError is true, stop right after recieving first WA
 		if execSpec.HaltOnFirstError && runInfo.Verdict != verdictOK {
 			sendResult(streamConn, verdictWA)
-			break
+			return // breaking loop isn't enough, RETURN! so at the very last AC verdict isn't sent
 		}
 	}
 
@@ -126,6 +126,7 @@ func RunnerAgent() {
 			fmt.Sprintf("No valid testcases or .in files found in '%s'", testsetPath),
 		)
 		sendResult(streamConn, verdictIE)
+		return // breaking loop isn't enough, RETURN! so at the very last AC verdict isn't sent
 	}
 
 	// everything went well, all tests passed without any issues
