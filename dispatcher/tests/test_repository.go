@@ -26,9 +26,8 @@ func NewDispatcherRepository(t *testing.T) TestRepository {
 	}
 
 	tjs := shared.JobSpec{
-		Language: "cpp",
-		Version:  "c++17",
-		Image:    "ghcr.io/smsadat1/alpinejudge/master:test",
+		SubmissionID: tsID,
+		Language:     "cpp",
 		Source: `
 		#include <iostream>
 
@@ -40,7 +39,6 @@ func NewDispatcherRepository(t *testing.T) TestRepository {
 			
 		    return 0;   
 		}`,
-		SubmissionID:         tsID,
 		Bucket:               "testbucket",
 		SrcCodeS3Key:         fmt.Sprintf("submissions/%s/main.cpp", tsID),
 		TestsetS3Key:         fmt.Sprintf("testsets/%s/main.cpp", tsID),

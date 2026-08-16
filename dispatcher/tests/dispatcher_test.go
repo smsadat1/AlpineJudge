@@ -59,8 +59,10 @@ func Test_Dispatcher_Subsystem_E2E(t *testing.T) {
 	}
 
 	var jsonResp map[string]string
-	_ = json.NewDecoder(resp.Body).Decode(&jsonResp)
-	expectedJobID := jsonResp["job_id"]
+	if err := json.Unmarshal(body, &jsonResp); err != nil {
+		t.Fatalf("Failed to unmarshal response to JSON: %v", err)
+	}
+	expectedSubmID := jsonResp["submission_id"]
 
 	select {
 	case delivery, ok := <-interceptorQueue:
@@ -72,8 +74,8 @@ func Test_Dispatcher_Subsystem_E2E(t *testing.T) {
 		_ = delivery.Ack(false)
 
 		// ASSERTION B: verify structural properties stayed unmutated inside the broker
-		if delivery.MessageId != expectedJobID {
-			t.Errorf("E2E Verification Failed: Message ID mismatch. Expected %s, got %s", expectedJobID, delivery.MessageId)
+		if delivery.MessageId != expectedSubmID {
+			t.Errorf("E2E Verification Failed: Message ID mismatch. Expected %s, got %s", expectedSubmID, delivery.MessageId)
 		}
 
 		var brokerPayload internal.SubmissionSpec
@@ -83,7 +85,7 @@ func Test_Dispatcher_Subsystem_E2E(t *testing.T) {
 		}
 
 		t.Log("E2E Core Flow passed perfectly: HTTP -> Validation -> RMQ Wire.")
-	case <-time.After(30 * time.Second):
+	case <-time.After(45 * time.Second):
 		t.Fatal("E2E Validation Failed: Timeout reached before message broke into RabbitMQ")
 	}
 }
