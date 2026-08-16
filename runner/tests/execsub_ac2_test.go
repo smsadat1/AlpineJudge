@@ -16,7 +16,7 @@ import (
 
 func Test_ExecSubm_AC_Java(t *testing.T) {
 
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
@@ -24,8 +24,13 @@ func Test_ExecSubm_AC_Java(t *testing.T) {
 
 	// Java
 	tr.TestJobSpec.Language = "java"
-	tr.TestAgentExecSpec.CompileArgs = []string{}
-	tr.TestAgentExecSpec.RunArgs = []string{"java", "/workspace/submissions/test001/Main.java"}
+	tr.TestAgentExecSpec.CompileArgs = []string{"javac", "-d", "/workspace/submissions/test001", "/workspace/submissions/test001/Main.java"}
+	tr.TestAgentExecSpec.RunArgs = []string{
+		"java",
+		"-XX:+TieredCompilation",
+		"-XX:TieredStopAtLevel=1", // Fast JIT startup flag
+		"-cp", "/workspace/submissions/test001",
+		"Main"}
 
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/Main.java")

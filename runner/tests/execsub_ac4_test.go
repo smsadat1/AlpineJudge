@@ -24,8 +24,12 @@ func Test_ExecSubm_AC_Go(t *testing.T) {
 
 	// Go
 	tr.TestJobSpec.Language = "go"
-	tr.TestAgentExecSpec.CompileArgs = []string{}
-	tr.TestAgentExecSpec.RunArgs = []string{"go", "run", "/workspace/submissions/test001/main.go"}
+	tr.TestAgentExecSpec.CompileArgs = []string{
+		"go", "build",
+		"-o", "/workspace/submissions/test001/main", // Output binary path
+		"/workspace/submissions/test001/main.go",
+	}
+	tr.TestAgentExecSpec.RunArgs = []string{"/workspace/submissions/test001/main"}
 
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/go/main.go")

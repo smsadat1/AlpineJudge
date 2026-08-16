@@ -4,7 +4,6 @@ import (
 	"assert"
 	"context"
 	"encoding/json"
-	"fmt"
 	"local/runner/pkg"
 	"strings"
 	"testing"
@@ -59,7 +58,7 @@ func Test_ExecSubm_AC_C(t *testing.T) {
 					assert.String(t, "Accepted", testEventStream.Status)
 					break // Type RESULT means stream has ended
 				}
-				fmt.Printf("%v\n", testEventStream)
+
 				count++
 				assert.String(t, "INFO", testEventStream.Type)
 				assert.Bool(t, true, strings.HasPrefix(testEventStream.Status, "Running test"))

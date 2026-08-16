@@ -26,7 +26,14 @@ func TestMain(m *testing.M) {
 	os.Setenv("TEST_S3_REGION_NAME", "us-east-1")
 	os.Setenv("TEST_RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
 	os.Setenv("RABBITMQ_QUEUE_NAME", "queue-001")
+
+	os.Setenv("CONTAINER_QUEUECAP", "10")
 	os.Setenv("TIMEOUT_SEC", "300")
+	os.Setenv("MEMORY_LIMIT_MB", "1024")
+	os.Setenv("PID_LIMIT", "128")
+	os.Setenv("CPU_QUOTA", "2.0")
+	os.Setenv("NO_NEW_PRIVILEGES", "true")
+	os.Setenv("READONLY_ROOTFS", "true")
 
 	tf := pkg.NewRunnerTestFactory()
 	tf.StartTestMinioS3(ctx)

@@ -18,7 +18,6 @@ func Test_ExecSubm_RE_Network(t *testing.T) {
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
-	// tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 
 	// Python
@@ -29,8 +28,6 @@ func Test_ExecSubm_RE_Network(t *testing.T) {
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/network.py")
 
-	// tf.StartTestMinioS3(t, ctx)
-	// tf.StartTestRMQ(t, ctx)
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
 	// get events from RMQ

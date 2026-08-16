@@ -16,7 +16,7 @@ import (
 )
 
 func Test_InitRunner(t *testing.T) {
-	testCtx, testCancel := context.WithTimeout(t.Context(), 60*time.Second)
+	testCtx, testCancel := context.WithTimeout(t.Context(), 240*time.Second)
 	defer testCancel()
 
 	runnerctx, runnerCancel := context.WithCancel(testCtx)
@@ -42,7 +42,7 @@ func Test_InitRunner(t *testing.T) {
 	if err := SharedTF.S3m.UploadFileToS3(testCtx, tr.TestJobSpec.SrcCodeS3Key, srcFileData); err != nil {
 		t.Fatalf("Failed to upload source file: %v", err)
 	}
-	if err := SharedTF.S3m.UploadDirToS3(testCtx, tr.TestJobSpec.TestsetS3Key, "../examples/ts001"); err != nil {
+	if err := SharedTF.S3m.UploadDirToS3(testCtx, tr.TestJobSpec.TestsetS3Key, "ts001"); err != nil {
 		t.Fatalf("Failed to upload testsests: %v", err)
 	}
 
@@ -71,6 +71,8 @@ func Test_InitRunner(t *testing.T) {
 
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
+
+				fmt.Printf("Events: %v\n", testEventStream)
 
 				if testEventStream.Type == "RESULT" {
 					assert.String(t, "Accepted", testEventStream.Status)

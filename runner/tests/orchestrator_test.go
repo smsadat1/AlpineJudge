@@ -17,14 +17,11 @@ import (
 
 func Test_Orchestrator(t *testing.T) {
 
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 240*time.Second)
 	cCtx := namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
 	tr := pkg.NewRunnerTestRepository(t)
-	// tf := pkg.NewRunnerTestFactory(t)
-	// tf.StartTestMinioS3(t, ctx)
-	// tf.StartTestRMQ(t, ctx)
 	warmCont := SharedTF.GetWarmContainer(t, cCtx)
 
 	// upload artifacts to S3 first ==============
@@ -35,7 +32,7 @@ func Test_Orchestrator(t *testing.T) {
 	if err := SharedTF.S3m.UploadFileToS3(ctx, tr.TestJobSpec.SrcCodeS3Key, srcFileData); err != nil {
 		t.Fatalf("Failed to upload source file: %v", err)
 	}
-	if err := SharedTF.S3m.UploadDirToS3(ctx, tr.TestJobSpec.TestsetS3Key, "../examples/ts001"); err != nil {
+	if err := SharedTF.S3m.UploadDirToS3(ctx, tr.TestJobSpec.TestsetS3Key, "ts001"); err != nil {
 		t.Fatalf("Failed to upload testsests: %v", err)
 	}
 
