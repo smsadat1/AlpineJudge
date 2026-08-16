@@ -161,7 +161,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 		t.Errorf("Failed copying source submission file: %v | Written %v", err, wn)
 	}
 
-	testsetPath := "../examples/artifacts/ts001"
+	testsetPath := "ts001"
 
 	for i := 1; ; i++ {
 		input := filepath.Join(testsetPath, fmt.Sprintf("%03d.in", i))
@@ -177,7 +177,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 			t.Errorf("Failed copying source file (read .in): %v", err)
 		}
 
-		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03din.txt", rtr.TestsetID, i), inData, 0777)
+		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03d.in", rtr.TestsetID, i), inData, 0777)
 		if err != nil {
 			t.Errorf("Error copying testset files (write .in): %v", err)
 		}
@@ -187,7 +187,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 			t.Errorf("Failed copying source file (read .out): %v", err)
 		}
 
-		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03dout.txt", rtr.TestsetID, i), outData, 0777)
+		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03d.out", rtr.TestsetID, i), outData, 0777)
 		if err != nil {
 			t.Errorf("Error copying testset files (write .out): %v", err)
 		}
