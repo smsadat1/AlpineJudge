@@ -34,50 +34,53 @@ AlpineJudge solves this by treating code execution as a hardened infrastructure 
 
 ## Getting Started
 
-AlpineJudge can be used in two ways.
+AlpineJudge has two stage deployment 
 
-### Option 1 — Use the Python SDK (Recommended)
+### Stage 1 - Install the AlpineJudge system
+```bash
+git clone git@github.com:smsadat1/AlpineJudge.git
+cd AlpineJudge
+cp .env.example .env
+docker compose up --build
+```
+
+### Stage 2 — Python SDK and  language image
 
 Install the SDK:
 
 ```bash
 pip install alpinejudge-sdk
+ctr -n aj-namespace images pull ghcr.io/smsadat1/alpinejudge/master:v0.1.0
+
 ```
 
 Submit a job:
 
 ```python
-from alpinejudge import Client
+import asyncio
+from alpinejudge import AlpineJudge
 
-client = Client("<ALPINEJUDGE_URL>")
+async def main():
 
-result = client.submit(
-    language="python",
-    version="python3.12",
-    file="main.py",
-    testset="ts001",
-    testset_version="v1",
-)
+    client = AlpineJudge() 
 
-print(result.status)
+    async for event in client.submit_and_watch(
+        submission_id="001",
+        bucket="ajbucket",
+        language="cpp",
+        source= '#include <iostream>\nint main() { std::cout << "Hello World!"; return 0; }',
+        testset_id="cf86B",
+    ):
+        print(f"{event.status} -> {event.details or event.stdout}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
-
-**Replace <ALPINEJUDGE_URL> with:**
-
-- http://localhost:4004 if you're running a local self-hosted instance.
-- The URL of your organization's AlpineJudge deployment.
-- The URL of a hosted AlpineJudge service.
 
 See the [Python SDK documentation](docs/sdk/pythonexamples.md) for more examples.
 
 ---
-
-### Option 2 — Self Host AlpineJudge
-
-To deploy your own Dispatcher and Runner instances, follow the installation guide.
-
-**See [INSTALLATION.md](docs/INSTALLATIONS.md)**
-
 
 ## Architecture & Design Philosophy
 
@@ -100,15 +103,13 @@ AlpineJudge is composed of two subsystems:
 
 Execution flow: 
 
-  ` Client -> Dispatcher -> RunnerService -> Sandbox (gVisor) `
+  ` Client -> Dispatcher -> RunnerService -> Ajagent inside container `
 
 ## Key Capabilities
 
-  - Multi-language execution (Python, C/C++, Go, Java)
-  - Versioned runtime support (e.g. Python 3.10 C++17 Go 1.22 )
-  - Secure sandboxed execution using gVisor
-  - Websocket based execution status streaming
-
+  - Multi-language execution (Python, C/C++, Go, Java, JS)
+  - Secure sandboxed execution using containerd containers
+  - SSE based execution status streaming
 
 
 ## Non-Goal 
@@ -123,6 +124,6 @@ Detailed technical documentation is available in `/docs`:
 
   - Architecture -> `docs/ARCHITECTURE.md`
   - API references -> `docs/API.md`
-  - Design decisions -> `docs/adrs`
+  - Design decisions -> `docs/ADRs`
   - Subsystem documentation (dispatcher) -> `docs/subsystems/dispatcher.md`
   - Subsystem documentation (runner) -> `docs/subsystems/runner`
