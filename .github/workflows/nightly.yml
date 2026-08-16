@@ -12,8 +12,12 @@ jobs:
     steps: 
       - uses: actions/checkout@v4
       
+      - name: Create .env
+        run: |
+          printf '%s\n' '${{ secrets.AJENVVARS }}' > .env
+
       - name: Start services
-        run: docker compose up --build
+        run: docker compose up --build -d
 
       - name: Wait for services 
         run: docker compose ps 
