@@ -52,14 +52,26 @@ func PrepareExecrules(
 	}
 
 	if language == "go" {
-		runArgs = append(runArgs, "go")
-		runArgs = append(runArgs, "run")
-		runArgs = append(runArgs, submmittedCodePathBase+"main.go")
+		// compile once the run native Go binary for faster runtime
+
+		compileArgs = append(compileArgs, "go", "build", "-o")
+		compileArgs = append(compileArgs, submmittedCodePathBase+"main")    // Output binary path
+		compileArgs = append(compileArgs, submmittedCodePathBase+"main.go") // Go file
+
+		runArgs = append(runArgs, submmittedCodePathBase+"main")
 	}
 
 	if language == "java" {
+		compileArgs = append(compileArgs, "javac", "-d")
+		compileArgs = append(compileArgs, submmittedCodePathBase)
+		compileArgs = append(compileArgs, submmittedCodePathBase+"Main.java")
+
+		// compiled once and used fast JIT startup flag for faster runtime
 		runArgs = append(runArgs, "java")
-		runArgs = append(runArgs, submmittedCodePathBase+"Main."+jobspec.Language)
+		runArgs = append(runArgs, "-XX:+TieredCompilation")
+		runArgs = append(runArgs, "-XX:TieredStopAtLevel=1")
+		runArgs = append(runArgs, "-cp", submmittedCodePathBase)
+		runArgs = append(runArgs, "Main")
 	}
 
 	if language == "node" {
