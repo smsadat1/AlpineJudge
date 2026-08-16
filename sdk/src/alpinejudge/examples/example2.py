@@ -1,5 +1,5 @@
 import asyncio
-from .client import AlpineJudge
+from ..client import AlpineJudge
 
 async def run_single_submission(client: AlpineJudge, sub_id: str, code: str):
     print(f"[{sub_id}] Dispatching submission...")

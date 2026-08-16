@@ -1,5 +1,5 @@
 import asyncio
-from .client import AlpineJudge
+from ..client import AlpineJudge
 
 async def main():
 
