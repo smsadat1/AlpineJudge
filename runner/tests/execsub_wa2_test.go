@@ -14,13 +14,15 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_WA(t *testing.T) {
+// test stops when the first WA happends
+func Test_ExecSubm_WA_HFE(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
 	tr := pkg.NewRunnerTestRepository(t)
+	tr.TestAgentExecSpec.HaltOnFirstError = true // test stops when the first WA happends
 	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/wrongans.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/wrongans.cpp")
@@ -52,6 +54,8 @@ func Test_ExecSubm_WA(t *testing.T) {
 
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
+
+				fmt.Printf("Events: %v\n", testEventStream)
 
 				if testEventStream.Type == "RESULT" {
 					assert.String(t, "Wrong answer", testEventStream.Status)
