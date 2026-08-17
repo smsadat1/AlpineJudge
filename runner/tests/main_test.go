@@ -36,6 +36,8 @@ func TestMain(m *testing.M) {
 	os.Setenv("NO_NEW_PRIVILEGES", "true")
 	os.Setenv("READONLY_ROOTFS", "true")
 
+	os.Setenv("DIRECT_EXCHANGE_NAME", "ajxchnage")
+
 	tf := pkg.NewRunnerTestFactory()
 	tf.StartTestMinioS3(ctx)
 	tf.StartTestRMQ(ctx)
