@@ -55,8 +55,6 @@ func Test_ExecSubm_WA_HFE(t *testing.T) {
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
 
-				fmt.Printf("Events: %v\n", testEventStream)
-
 				if testEventStream.Type == "RESULT" {
 					assert.String(t, "Wrong answer", testEventStream.Status)
 					break // Type RESULT means stream has ended

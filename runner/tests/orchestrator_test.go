@@ -17,7 +17,7 @@ import (
 
 func Test_Orchestrator(t *testing.T) {
 
-	ctx, cancel := context.WithTimeout(t.Context(), 240*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
 	cCtx := namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
