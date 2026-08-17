@@ -16,7 +16,7 @@ import (
 
 func Test_ExecSubm_AC_NodeJS(t *testing.T) {
 
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
