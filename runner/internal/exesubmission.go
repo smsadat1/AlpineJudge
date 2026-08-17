@@ -50,18 +50,29 @@ func (wc *WarmContainer) ExecSubm(
 			Which causes overflow and unix socket connection drops silently.
 			That's why a good estimation of 10 MB max log size is set with 60KB of buffer so socket connection doesn't break during OLE
 		*/
-		// TODO: Make MAXLOGCAP part of env vars instead
-		const MAXLOGCAP = 10 * 1024 * 1024 // 10 MB
+		maxlogcapKB, exists := os.LookupEnv("MAX_LOG_CAP_KB")
+		if !exists {
+			log.Fatal("Missing env var DIRECT_EXCHANGE_NAME")
+		}
 		scanner := bufio.NewScanner(c)
 		buf := make([]byte, 60*1024)
-		scanner.Buffer(buf, MAXLOGCAP)
+		maxlogcapKBn, err := strconv.ParseInt(maxlogcapKB, 10, 32)
+		if err != nil {
+			log.Fatalf("Failed converting maxlogcapKB to int: %v", err)
+		}
+		scanner.Buffer(buf, int(maxlogcapKBn))
+
+		exchangename, exists := os.LookupEnv("DIRECT_EXCHANGE_NAME")
+		if !exists {
+			log.Fatal("Missing env var DIRECT_EXCHANGE_NAME")
+		}
 
 		for scanner.Scan() {
 			eventPayload := scanner.Bytes()
 
 			// pass entire payload to RMQ
 			// Earlier only Type, Status & Detail was sent while passing stdout & stderr directed to S3
-			routeToRMQ(ctx, jobspec.SSEQueue, rmqm, eventPayload)
+			routeToRMQ(ctx, jobspec.SubmissionID, rmqm, exchangename, eventPayload)
 		}
 
 		if err := scanner.Err(); err != nil {
