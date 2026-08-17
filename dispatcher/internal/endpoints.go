@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -112,13 +111,21 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// uniquely generated consumer tag to avoid multi-client registration conflicts
-	uniqueConsumerTag := fmt.Sprintf("sse_%d", time.Now().UnixNano())
+	submissionID := r.PathValue("submission_id")
+	routingKey := submissionID
+
+	exchangeName, exists := os.LookupEnv("DIRECT_EXCHANGE_NAME")
+	if !exists {
+		log.Fatal("Env var DIRECT_EXCHANGE_NAME not found")
+	}
+
+	// 2. Subscribe and bind the temp queue to the exchange using the routing key
 	execEventQueue := make(chan amqp.Delivery)
-	if err := env.rmqm.Subscribe(
+	if err := env.rmqm.SubscribeToExchange(
 		*env.ctx,
 		execEventQueue,
-		uniqueConsumerTag,
-		os.Getenv("RABBITMQ_SSE_QUEUE_NAME"),
+		exchangeName,
+		routingKey, // <-- ONLY listen for messages matching submission_id
 	); err != nil {
 		http.Error(w, "Execution event queue failed!", http.StatusInternalServerError)
 		return
@@ -134,10 +141,15 @@ func (env *ServerEnv) SSEHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println("Event queue subscription closed stream.")
 				return
 			}
-			fmt.Fprintf(w, "data: %s\n\n", string(msg.Body))
-			flusher.Flush()
 
-			_ = msg.Ack(false) // ACK message delivery processing
+			// write to HTTP pipe
+			if _, err := fmt.Fprintf(w, "data: %s\n\n", string(msg.Body)); err != nil {
+				// if write fails, DO NOT ACK. Nack/Reject or exit loop to trigger channel close.
+				_ = msg.Nack(false, false) // Rejects message without requeueing
+				return
+			}
+			flusher.Flush()    // flush bytes on the network
+			_ = msg.Ack(false) // manual ACK
 		}
 	}
 }
