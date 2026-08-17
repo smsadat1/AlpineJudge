@@ -151,12 +151,15 @@ func NewTestHarness(t *testing.T, testcode string) *TestHarness {
 func (th *TestHarness) InitHarnessTestSpec() {
 	th.TestSpec = utils.AgentExecSpec{
 		SubmissionID:     "sub001",
-		HaltOnFirstError: false,
-		LogLimitKB:       1,
-		TimeoutSec:       45,
-		TestSetPath:      "artifacts/ts001",
-		CompileArgs:      []string{"/usr/bin/g++", "-std=c++17", "-Wall", "-Wextra", "-o", "artifacts/main", "artifacts/main.cpp"},
-		RunArgs:          []string{"./artifacts/main"},
+		HaltOnFirstError: true,
+
+		LogLimitKB:    512,
+		TimeoutSec:    45,
+		MemoryLimitMB: 512,
+
+		TestSetPath: "artifacts/ts001",
+		CompileArgs: []string{"/usr/bin/g++", "-std=c++17", "-Wall", "-Wextra", "-o", "artifacts/main", "artifacts/main.cpp"},
+		RunArgs:     []string{"./artifacts/main"},
 	}
 }
 

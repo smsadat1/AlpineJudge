@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"utils"
 )
 
@@ -86,6 +87,7 @@ func RunnerAgent() {
 	testsetPath := execSpec.TestSetPath
 
 	testCount := 0
+	allCorrect := true // true by default, becomes false whenever vredict is not VerdictOK
 
 	for i := 1; ; i++ {
 		input, output, exist := findTestcaseFiles(testsetPath, i)
@@ -111,10 +113,18 @@ func RunnerAgent() {
 			return // breaking loop isn't enough, RETURN! so at the very last AC verdict isn't sent
 		}
 
+		// for correct cases verdicts come as "Running test n" not as "Running test" so used HasPrefix check
+
 		// when HaltOnFirstError is true, stop right after recieving first WA
-		if execSpec.HaltOnFirstError && runInfo.Verdict != verdictOK {
+		if execSpec.HaltOnFirstError && !strings.HasPrefix(runInfo.Verdict, verdictOK) {
 			sendResult(streamConn, verdictWA)
 			return // breaking loop isn't enough, RETURN! so at the very last AC verdict isn't sent
+		}
+
+		// set allCorrect to false whenever a WA happens (or anything except OK)
+		// so later final result is decided on this
+		if !strings.HasPrefix(runInfo.Verdict, verdictOK) {
+			allCorrect = false
 		}
 	}
 
@@ -127,6 +137,12 @@ func RunnerAgent() {
 		)
 		sendResult(streamConn, verdictIE)
 		return // breaking loop isn't enough, RETURN! so at the very last AC verdict isn't sent
+	}
+
+	// WA happened at least in one test
+	if !allCorrect {
+		sendResult(streamConn, verdictWA)
+		return // return de bokachoda
 	}
 
 	// everything went well, all tests passed without any issues
