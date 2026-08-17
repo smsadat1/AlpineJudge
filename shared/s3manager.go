@@ -175,6 +175,7 @@ func (m *S3Manager) DownloadDirFromS3(
 		Prefix: aws.String(keyPrefix),
 	})
 
+	filesDownloadCount := 0
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
@@ -193,13 +194,18 @@ func (m *S3Manager) DownloadDirFromS3(
 			localPath := filepath.Join(ofileDir, relPath)
 
 			// Filter for in.txt and out.txt
-			if strings.HasSuffix(*obj.Key, "in.txt") ||
-				strings.HasSuffix(*obj.Key, "out.txt") {
+			if strings.HasSuffix(*obj.Key, ".in") ||
+				strings.HasSuffix(*obj.Key, ".out") {
 				if err := m.DownloadFileFromS3(ctx, bucket, *obj.Key, localPath); err != nil {
 					return err
 				}
 			}
+			filesDownloadCount++
 		}
+	}
+
+	if filesDownloadCount == 0 {
+		return fmt.Errorf("s3 download succeeded but 0 testcase files matched key prefix '%s' in bucket '%s'", keyPrefix, bucket)
 	}
 
 	return nil
