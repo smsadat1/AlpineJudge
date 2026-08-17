@@ -12,6 +12,20 @@ import (
 	"utils"
 )
 
+func isTestsetDirEmpty(testsetPath string) (bool, error) {
+
+	testSetDir, err := os.Open(testsetPath)
+	if err != nil {
+		return false, err
+	}
+	defer testSetDir.Close()
+
+	if _, err := testSetDir.Readdirnames(1); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // manages entire container lifecycle
 func OrchestrateSubm(
 	ctx context.Context,
@@ -33,10 +47,19 @@ func OrchestrateSubm(
 		}
 	}
 
-	// download testsets from S3
-	if err := s3m.DownloadDirFromS3(ctx,
-		jobspec.Bucket, jobspec.TestsetS3Key, "/tmp/runner/testsets/"+jobspec.Testset+"/"); err != nil {
-		return utils.ContainerInfo{}, fmt.Errorf("Failed to download testet from S3:  %v\n", err)
+	// check if testset already exists on filesystem
+	testsetDirPath := fmt.Sprintf("/tmp/runner/testsets/%v/", jobspec.Testset)
+	exists, _ := isTestsetDirEmpty(testsetDirPath)
+
+	// download testsets from S3 only when it's not already downloaded
+	if !exists {
+		log.Printf("Testset %v doesn't exists on filesystem, downloading...\n", testsetDirPath)
+		if err := s3m.DownloadDirFromS3(ctx,
+			jobspec.Bucket, jobspec.TestsetS3Key, testsetDirPath); err != nil {
+			return utils.ContainerInfo{}, fmt.Errorf("Failed to download testet from S3:  %v\n", err)
+		}
+	} else {
+		log.Printf("Testset %v already exists on filesystem, skipping download...\n", testsetDirPath)
 	}
 
 	// prepare execution rules
@@ -47,9 +70,7 @@ func OrchestrateSubm(
 
 	// prepare in-container agent specification and pass it via unix socket
 	ajagentSpec := internal.Build_AgentExecSpec(rules)
-	// if err := json.NewEncoder(wc.Conn).Encode(ajagentSpec); err != nil {
-	// 	return utils.ContainerInfo{}, fmt.Errorf("Failed sending execspec JSON: %v", err)
-	// }
+
 	if err := json.NewEncoder(wc.Conn).Encode(ajagentSpec); err != nil {
 		if task, tErr := wc.Container.Task(ctx, nil); tErr == nil {
 			st, _ := task.Status(cCtx)
