@@ -8,11 +8,14 @@ import (
 
 // Original "SubmissionSpec" is in dispatcher, copied here for shared infra test purpose
 type SubmissionSpec_Copy struct {
-	SubmissionID string `json:"submission_id"`
-	Bucket       string `json:"bucket"`
-	Language     string `json:"language"`
-	Source       string `json:"source"`
-	Testset      string `json:"testset"`
+	Language             string `json:"language"`
+	Source               string `json:"source"`
+	SubmissionID         string `json:"submission_id"`
+	Bucket               string `json:"bucket"`
+	Testset              string `json:"testset_id"`
+	PerTestMemoryLimitMB uint64 `json:"memory_limit_mb"`
+	PerTestTimeoutsec    uint32 `json:"timeout_sec"`
+	PerTestLogLimitKB    uint32 `json:"log_limit_kb"`
 }
 
 type TestRepository struct {
@@ -36,8 +39,6 @@ func NewRepository(t *testing.T) TestRepository {
 
 	tjs := shared.JobSpec{
 		Language: "cpp",
-		Version:  "c++17",
-		Image:    "ghcr.io/smsadat1/alpinejudge/master:test",
 		Source: `
 		#include <iostream>
 
@@ -54,7 +55,6 @@ func NewRepository(t *testing.T) TestRepository {
 		SrcCodeS3Key:         fmt.Sprintf("submissions/%s/main.cpp", tsID),
 		TestsetS3Key:         fmt.Sprintf("testsets/%s/main.cpp", tsID),
 		Testset:              testsetID,
-		TestsetVersion:       "v1",
 		SSEQueue:             "queue-001",
 		PerTestMemoryLimitMB: 1024,
 		PerTestLogLimitKB:    512,
