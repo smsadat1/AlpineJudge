@@ -43,7 +43,6 @@ func NewDispatcherRepository(t *testing.T) TestRepository {
 		SrcCodeS3Key:         fmt.Sprintf("submissions/%s/main.cpp", tsID),
 		TestsetS3Key:         fmt.Sprintf("testsets/%s/main.cpp", tsID),
 		Testset:              testsetID,
-		TestsetVersion:       "v1",
 		SSEQueue:             "queue-001",
 		PerTestMemoryLimitMB: 1024,
 		PerTestLogLimitKB:    512,
