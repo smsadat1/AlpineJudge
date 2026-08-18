@@ -20,9 +20,8 @@ func Test_PrepareExecrules(t *testing.T) {
 
 	testSubmissionID := "s234"
 	testTestsetID := "ts001"
-	testTestsetVer := "v1"
 	testSrcCodeS3key := "/submissions/" + testSubmissionID + "/main.cc"
-	testTestsetS3key := "/testsets/" + testTestsetID + "/" + testTestsetVer + "/"
+	testTestsetS3key := "/testsets/" + testTestsetID + "/"
 
 	data, err := os.Open("../examples/main.cpp")
 	if err != nil {
@@ -36,15 +35,12 @@ func Test_PrepareExecrules(t *testing.T) {
 	_, _ = tf.S3m.CreateABucket(ctx, os.Getenv("TEST_S3_BUCKET_NAME"))
 
 	testJobSpec := shared.JobSpec{
-		Language:       "cc",
-		Version:        "c++20",
-		SubmissionID:   testSubmissionID,
-		Bucket:         os.Getenv("TEST_S3_BUCKET_NAME"),
-		SrcCodeS3Key:   testSrcCodeS3key,
-		TestsetS3Key:   testTestsetS3key,
-		Testset:        testTestsetID,
-		TestsetVersion: testTestsetVer,
-		Image:          "ghcr.io/smsadat1/alpinejudge/gcc:test",
+		Language:     "cc",
+		SubmissionID: testSubmissionID,
+		Bucket:       os.Getenv("TEST_S3_BUCKET_NAME"),
+		SrcCodeS3Key: testSrcCodeS3key,
+		TestsetS3Key: testTestsetS3key,
+		Testset:      testTestsetID,
 	}
 
 	// create temp location

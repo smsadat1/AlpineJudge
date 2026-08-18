@@ -50,8 +50,6 @@ func NewRunnerTestRepository(t *testing.T) *RunnerTestRepository {
 
 	tjs := shared.JobSpec{
 		Language: "cpp",
-		Version:  "c++17",
-		Image:    "ghcr.io/smsadat1/alpinejudge/master:test",
 		Source: `
 		#include <iostream>
 
@@ -68,7 +66,6 @@ func NewRunnerTestRepository(t *testing.T) *RunnerTestRepository {
 		SrcCodeS3Key:         fmt.Sprintf("submissions/%s/main.cpp", tsID),
 		TestsetS3Key:         fmt.Sprintf("testsets/%s/main.cpp", tsID),
 		Testset:              testsetID,
-		TestsetVersion:       "v1",
 		SSEQueue:             "queue-001",
 		PerTestMemoryLimitMB: 1024,
 		PerTestLogLimitKB:    512,

@@ -12,7 +12,6 @@ func PrepareExecrules(
 ) (error, utils.ExecRules) {
 
 	language := jobspec.Language
-	version := jobspec.Version
 
 	var compileArgs []string
 	var runArgs []string
@@ -25,21 +24,6 @@ func PrepareExecrules(
 
 		if language == "cpp" || language == "cc" {
 			compileArgs = append(compileArgs, "g++")
-		}
-
-		switch version {
-		case "c99":
-			compileArgs = append(compileArgs, "-std=c99")
-		case "c11":
-			compileArgs = append(compileArgs, "-std=c17")
-		case "c17":
-			compileArgs = append(compileArgs, "-std=c17")
-		case "c++11":
-			compileArgs = append(compileArgs, "-std=c++11")
-		case "c++17":
-			compileArgs = append(compileArgs, "-std=c++17")
-		case "c++20":
-			compileArgs = append(compileArgs, "-std=c++20")
 		}
 
 		compileArgs = append(compileArgs, "-Wall")
@@ -84,7 +68,6 @@ func PrepareExecrules(
 		runArgs = append(runArgs, submmittedCodePathBase+"main.py")
 	}
 
-	containerImage := jobspec.Image
 	hostSrcFilePath := "/tmp/runner/submissions/" + jobspec.SubmissionID + "/main." + language
 	hostTestFileDir := "/tmp/runner/testsets/" + jobspec.Testset + "/"
 
@@ -105,7 +88,6 @@ func PrepareExecrules(
 		// unique container ID to avoid collision
 		ContainerID: generateContainerID(),
 
-		Image:       containerImage,
 		CompileArgs: compileArgs,
 		RunArgs:     runArgs,
 

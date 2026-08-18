@@ -28,7 +28,6 @@ func (wc *WarmContainer) ExecSubm(
 	contInfo := utils.ContainerInfo{
 		SubmissionId:    jobspec.SubmissionID,
 		Language:        jobspec.Language,
-		Version:         jobspec.Version,
 		Interval:        0,
 		Status:          "PENDING",
 		StatusInfo:      "",
