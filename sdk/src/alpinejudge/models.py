@@ -5,11 +5,14 @@ LanguageType = Literal["c", "cpp", "java", "python", "go", "js"]
 
 @dataclass
 class SubmissionRequest:
-    submission_id: str 
-    bucket: str 
     language: str 
     source: str 
+    submission_id: str 
+    bucket: str 
     testset_id: str
+    memory_limit_mb: int
+    timeout_sec: int 
+    log_limit_kb: int
 
 
 @dataclass

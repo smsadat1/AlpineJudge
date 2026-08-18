@@ -41,7 +41,10 @@ class AlpineJudge:
         bucket: str,
         language: LanguageType,
         source: str,
-        testset_id: str
+        testset_id: str,
+        memory_limit_mb: int = 512,
+        timeout_sec: int = 60,
+        log_limit_kb: int = 256,
     ) -> dict:
         """Sends submission asynchronously."""
         payload = {
@@ -49,7 +52,10 @@ class AlpineJudge:
             "bucket": bucket,
             "language": language,
             "source": source,
-            "testset_id": testset_id
+            "testset_id": testset_id,
+            "memory_limit_mb": memory_limit_mb,
+            "timeout_sec": timeout_sec,
+            "log_limit_kb": log_limit_kb,
         }
         res = await self.client.post("/submit", json=payload)
         res.raise_for_status()
@@ -96,9 +102,14 @@ class AlpineJudge:
         bucket: str,
         language: LanguageType,
         source: str,
-        testset_id: str
+        testset_id: str,
+        memory_limit_mb: int = 512,
+        timeout_sec: int = 60,
+        log_limit_kb: int = 256,
     ) -> AsyncGenerator[JudgeEvent, None]:
         """Convenience method: Submits and immediately streams results."""
-        await self.submit(submission_id, bucket, language, source, testset_id)
+        await self.submit(
+            submission_id, bucket, language, source, testset_id, memory_limit_mb, timeout_sec, log_limit_kb
+        )
         async for event in self.listen_events(submission_id):
             yield event
