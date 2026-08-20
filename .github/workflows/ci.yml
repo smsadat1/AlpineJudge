@@ -52,6 +52,7 @@ jobs:
           sudo rm -rf /tmp/rabbitmq-testcontainers*
           sudo systemctl start containerd
           sudo ctr -n test-namespace images pull ghcr.io/smsadat1/alpinejudge/master:test
+          sudo ctr -n test-namespace images pull ghcr.io/smsadat1/alpinejudge/master:v0.1.0
           cd tests && python generator1.py && python generator2.py
           sudo go vet -v ./...
           sudo go test -race -v -timeout 30m ./...
