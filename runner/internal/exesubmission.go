@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"shared"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 	"utils"
@@ -50,16 +52,17 @@ func (wc *WarmContainer) ExecSubm(
 			That's why a good estimation of 10 MB max log size is set with 60KB of buffer so socket connection doesn't break during OLE
 		*/
 		maxlogcapKB, exists := os.LookupEnv("MAX_LOG_CAP_KB")
+
 		if !exists {
 			log.Fatal("Missing env var DIRECT_EXCHANGE_NAME")
 		}
 		scanner := bufio.NewScanner(c)
-		buf := make([]byte, 60*1024)
+		buf := make([]byte, 60*1024) // 60 KB buffer size
 		maxlogcapKBn, err := strconv.ParseInt(maxlogcapKB, 10, 32)
 		if err != nil {
 			log.Fatalf("Failed converting maxlogcapKB to int: %v", err)
 		}
-		scanner.Buffer(buf, int(maxlogcapKBn))
+		scanner.Buffer(buf, int(maxlogcapKBn*1024)) // mutliplied with 1024 to make KB size
 
 		exchangename, exists := os.LookupEnv("DIRECT_EXCHANGE_NAME")
 		if !exists {
@@ -69,9 +72,39 @@ func (wc *WarmContainer) ExecSubm(
 		for scanner.Scan() {
 			eventPayload := scanner.Bytes()
 
-			// pass entire payload to RMQ
-			// Earlier only Type, Status & Detail was sent while passing stdout & stderr directed to S3
-			routeToRMQ(ctx, jobspec.SubmissionID, rmqm, exchangename, eventPayload)
+			var eventStream utils.Event
+			json.Unmarshal(eventPayload, &eventStream)
+
+			rmqPayload := utils.RMQPayload{
+				Type:    eventStream.Type,
+				Status:  eventStream.Status,
+				Details: eventStream.Details,
+			}
+			rmqData, err := json.Marshal(&rmqPayload)
+			if err != nil {
+				log.Printf("Error marshaling json data to rmqdata: %v\n", err)
+			}
+
+			routeToRMQ(ctx, jobspec.SubmissionID, rmqm, exchangename, rmqData)
+
+			// S3 upload happens asynchronously so uplaod doesn't block main event stream
+			go func() {
+				if err := s3m.UploadFileToS3(
+					ctx, fmt.Sprintf("%v/result/stdout.log", jobspec.SubmissionID), strings.NewReader(eventStream.Stdout),
+				); err != nil {
+					// in case of error, log it and move on. Can't wait during live stream
+					log.Printf("Error uploading stdout.log to S3: %v\n", err)
+				}
+			}()
+
+			go func() {
+				if err := s3m.UploadFileToS3(
+					ctx, fmt.Sprintf("%v/result/stderr.log", jobspec.SubmissionID), strings.NewReader(eventStream.Stderr),
+				); err != nil {
+					// in case of error, log it and move on. Can't wait during live stream
+					log.Printf("Error uploading stderr.log to S3: %v\n", err)
+				}
+			}()
 		}
 
 		if err := scanner.Err(); err != nil {

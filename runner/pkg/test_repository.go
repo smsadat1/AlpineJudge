@@ -27,27 +27,6 @@ func NewRunnerTestRepository(t *testing.T) *RunnerTestRepository {
 	tsID := "test001"
 	testsetID := "ts001"
 
-	// testsetDir := fmt.Sprintf("/tmp/runner/testsets/%s", testsetID)
-	// submissionDir := fmt.Sprintf("/tmp/runner/submissions/%s", tsID)
-
-	// Wipe stale leftovers from previous runs FIRST
-	// _ = os.RemoveAll(testsetDir)
-	// _ = os.RemoveAll(submissionDir)
-
-	// // create neccessary temp locations
-	// fmt.Println("\nCreating necessary temp locations")
-	// dirs := []string{
-	// 	"/tmp/runner/sockets",
-	// 	"/tmp/runner/testsets/" + testsetID + "/",
-	// 	"/tmp/runner/submissions/" + tsID,
-	// }
-
-	// for _, dir := range dirs {
-	// 	if err := os.MkdirAll(dir, 0777); err != nil {
-	// 		t.Errorf("failed to create directory %s: %v", dir, err)
-	// 	}
-	// }
-
 	tjs := shared.JobSpec{
 		Language: "cpp",
 		Source: `
@@ -158,8 +137,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 		t.Errorf("Failed copying source submission file: %v | Written %v", err, wn)
 	}
 
-	testsetPath := "ts001"
-
+	testsetPath := rtr.TestJobSpec.Testset
 	for i := 1; ; i++ {
 		input := filepath.Join(testsetPath, fmt.Sprintf("%03d.in", i))
 		output := filepath.Join(testsetPath, fmt.Sprintf("%03d.out", i))
@@ -174,7 +152,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 			t.Errorf("Failed copying source file (read .in): %v", err)
 		}
 
-		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03d.in", rtr.TestsetID, i), inData, 0777)
+		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03d.in", rtr.TestJobSpec.Testset, i), inData, 0777)
 		if err != nil {
 			t.Errorf("Error copying testset files (write .in): %v", err)
 		}
@@ -184,7 +162,7 @@ func (rtr *RunnerTestRepository) CopyFiles(t *testing.T, codeFilePath string) {
 			t.Errorf("Failed copying source file (read .out): %v", err)
 		}
 
-		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03d.out", rtr.TestsetID, i), outData, 0777)
+		err = os.WriteFile(fmt.Sprintf("/tmp/runner/testsets/%s/%03d.out", rtr.TestJobSpec.Testset, i), outData, 0777)
 		if err != nil {
 			t.Errorf("Error copying testset files (write .out): %v", err)
 		}
