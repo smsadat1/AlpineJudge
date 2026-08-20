@@ -12,7 +12,7 @@ def generate_hmac(input_data: bytes, secret_key: bytes) -> bytes:
 
 def generate_hash_testset(output_dir="ts002"):
     """
-    Generates 199999 tests in a single .in and .out pair
+    Generates 1999999 tests in a single .in and .out pair
         
     :param output_dir: Directory to save generated files
     """
@@ -25,17 +25,19 @@ def generate_hash_testset(output_dir="ts002"):
     in_path = os.path.join(output_dir, "001.in")
     out_path = os.path.join(output_dir, "001.out")
 
-    for i in range(1, 2000000):
-        input = "".join(secrets.choice(char_pool) for _ in range(16))
-        output = generate_hmac(input_data=input.encode(), secret_key=key)
+    total_tests = 1999999
+    print(f'Generating {total_tests} hashes for ts002')
 
-        with open(in_path, 'a') as in_file:
+    with open(in_path, 'w') as in_file, open(out_path, 'w') as out_file:
+        in_file.write(f"{total_tests}\n")
+
+        for _ in range(total_tests): 
+            input = "".join(secrets.choice(char_pool) for _ in range(16))
+            output = generate_hmac(input_data=input.encode(), secret_key=key)
             in_file.write(f"{input}\n")
-                    
-        with open(out_path, 'a') as out_file:
-            out_file.write(f"{output}\n")
+            out_file.write(f"{output.hex()}\n")
 
-    print(f"Successfully created 199999 test for '{output_dir}/'!")
+    print(f"Successfully created {total_tests} test for '{output_dir}/'!")
 
 
 if __name__ == "__main__":

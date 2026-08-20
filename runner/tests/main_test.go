@@ -29,9 +29,9 @@ func TestMain(m *testing.M) {
 
 	os.Setenv("CONTAINER_QUEUECAP", "10")
 	os.Setenv("TIMEOUT_SEC", "300")
-	os.Setenv("MEMORY_LIMIT_MB", "1024")
+	os.Setenv("MEMORY_LIMIT_MB", "4096")
 	os.Setenv("PID_LIMIT", "128")
-	os.Setenv("MAX_LOG_CAP_KB", "2048")
+	os.Setenv("MAX_LOG_CAP_KB", "460800")
 	os.Setenv("CPU_QUOTA", "2.0")
 	os.Setenv("NO_NEW_PRIVILEGES", "true")
 	os.Setenv("READONLY_ROOTFS", "true")

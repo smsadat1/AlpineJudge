@@ -4,6 +4,7 @@ import (
 	"assert"
 	"context"
 	"encoding/json"
+	"fmt"
 	"local/runner/pkg"
 	"os"
 	"strings"
@@ -15,15 +16,24 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_ExecSubm_AC_Cpp(t *testing.T) {
+func Test_ExecSubm_AC_Cpp_ts002(t *testing.T) {
 
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 180*time.Second)
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
 	tr := pkg.NewRunnerTestRepository(t)
+	codeFile := fmt.Sprintf("/workspace/submissions/%v/crypto.cpp", tr.TestJobSpec.SubmissionID)
+	tr.TestAgentExecSpec.CompileArgs = []string{
+		"g++", "-Wall", "-Wextra", "-o", "/tmp/main", codeFile, "-lcrypto", "-lssl",
+	}
+	tr.TestAgentExecSpec.LogLimitKB = 184320 // 184.32 MB
+	tr.TestAgentExecSpec.TimeoutSec = 60
+	tr.TestJobSpec.Testset = "ts002"
+	tr.TestsetID = "ts002"
+	tr.TestAgentExecSpec.TestSetPath = fmt.Sprintf("/workspace/testsets/%v/", tr.TestJobSpec.Testset)
 	tr.CreateTempLocations(t)
-	tr.CopyFiles(t, "../examples/main.cpp")
+	tr.CopyFiles(t, "../examples/crypto.cpp")
 
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
@@ -55,6 +65,8 @@ func Test_ExecSubm_AC_Cpp(t *testing.T) {
 
 				var testEventStream utils.Event
 				json.Unmarshal(delivery.Body, &testEventStream)
+
+				fmt.Printf("Event: %v\n", testEventStream)
 
 				if testEventStream.Type == "RESULT" {
 					assert.String(t, "Accepted", testEventStream.Status)

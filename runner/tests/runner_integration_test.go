@@ -96,7 +96,7 @@ func Test_InitRunner(t *testing.T) {
 		}
 	}()
 
-	// send jobspec payload over rmq
+	// submission over rmq
 	jobPayload, err := json.Marshal(tr.TestJobSpec)
 	if err != nil {
 		t.Fatalf("Failed marshaling jobspec payload: %v", err)
