@@ -1,4 +1,8 @@
+.idea
+.vscode
 .venv/
 __pycache__/
-
-app/.env
+FAILING.md
+.env
+ts001/
+ts002/
