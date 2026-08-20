@@ -9,7 +9,7 @@ LanguageType = Literal["c", "cpp", "java", "python", "go", "js"]
 
 class AlpineJudge:
 
-    def __init__(self, base_urlstr = "http://localhost:1111", timeout: float = 300.0) -> None:
+    def __init__(self, base_urlstr = "http://127.0.0.1:1111", timeout: float = 300.0) -> None:
         self.base_url = base_urlstr.rstrip("/")
         self.timeout = httpx.Timeout(timeout=timeout, connect=10.0)
         self._client: Optional[httpx.AsyncClient] = None
@@ -43,6 +43,7 @@ class AlpineJudge:
         res = await self.client.post("/presignedkey", json=payload)
         res.raise_for_status()
         data = res.json()
+        # print(f"Received Presigned S3 URL: {data['s3_presigned_key']}")
         return data["s3_presigned_key"]
 
     async def upload_testset(self, testset_path: str, testset_id: str):
@@ -64,6 +65,7 @@ class AlpineJudge:
     async def _upload_single_file(self, file_path: str, s3_key: str):
         # 1. Get presigned URL for this specific file key
         presigned_url = await self.get_presigned_upload_url(testset_id=s3_key)
+        presigned_url = presigned_url.replace("http://minio:9000", "http://127.0.0.1:9000")
 
         # 2. Upload raw bytes directly to S3
         async with httpx.AsyncClient() as upload_client:
@@ -71,7 +73,10 @@ class AlpineJudge:
                 upload_res = await upload_client.put(
                     presigned_url,
                     content=f.read(),
-                    headers={"Content-Type": "application/octet-stream"}
+                    headers={
+                        "Content-Type": "application/octet-stream",
+                        "Host": "minio:9000",
+                    }
                 )
                 upload_res.raise_for_status()
 
@@ -80,13 +85,13 @@ class AlpineJudge:
     async def submit(
         self,
         submission_id: str,
-        bucket: str,
         language: LanguageType,
         source: str,
         testset_id: str,
         memory_limit_mb: int = 512,
         timeout_sec: int = 60,
         log_limit_kb: int = 256,
+        bucket: str="ajbucket",
     ) -> dict:
         """Sends submission asynchronously."""
         payload = {
@@ -99,8 +104,13 @@ class AlpineJudge:
             "timeout_sec": timeout_sec,
             "log_limit_kb": log_limit_kb,
         }
-        res = await self.client.post("/submit", json=payload)
-        res.raise_for_status()
+        print(f'payload: {payload}')
+        try: 
+            res = await self.client.post("/submit", json=payload)
+            res.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            print(e.response.text)
+            raise e
         return res.json()
 
     async def listen_events(self, submission_id: str) -> AsyncGenerator[JudgeEvent, None]:
@@ -141,7 +151,6 @@ class AlpineJudge:
     async def submit_and_watch(
         self,
         submission_id: str,
-        bucket: str,
         language: LanguageType,
         source: str,
         testset_id: str,
@@ -151,7 +160,7 @@ class AlpineJudge:
     ) -> AsyncGenerator[JudgeEvent, None]:
         """Convenience method: Submits and immediately streams results."""
         await self.submit(
-            submission_id, bucket, language, source, testset_id, memory_limit_mb, timeout_sec, log_limit_kb
+            submission_id, language, source, testset_id, memory_limit_mb, timeout_sec, log_limit_kb
         )
         async for event in self.listen_events(submission_id):
             yield event
