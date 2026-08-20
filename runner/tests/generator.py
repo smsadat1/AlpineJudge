@@ -9,7 +9,6 @@ def generate_test_cases(min_val=-10**9, max_val=10**9, output_dir="ts001"):
     :param max_val: Maximum integer limit
     :param output_dir: Directory to save generated files
     """
-    # Create the output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
     for i in range(1, 1000):
@@ -17,15 +16,12 @@ def generate_test_cases(min_val=-10**9, max_val=10**9, output_dir="ts001"):
         in_path = os.path.join(output_dir, f"{file_id}.in")
         out_path = os.path.join(output_dir, f"{file_id}.out")
         
-        # Generate two random integers within specified range
         num1 = random.randint(min_val, max_val)
         num2 = random.randint(min_val, max_val)
         
-        # Write numbers to .in file
         with open(in_path, 'w') as in_file:
             in_file.write(f"{num1} {num2}\n")
             
-        # Write sum to .out file
         with open(out_path, 'w') as out_file:
             out_file.write(f"{num1 + num2}\n")
 

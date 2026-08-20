@@ -15,7 +15,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Test_Orchestrator(t *testing.T) {
+func Test_Orchestrator_ts001(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 120*time.Second)
 	cCtx := namespaces.WithNamespace(ctx, "test-namespace")

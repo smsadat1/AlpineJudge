@@ -16,7 +16,7 @@ import (
 )
 
 func Test_InitRunner(t *testing.T) {
-	testCtx, testCancel := context.WithTimeout(t.Context(), 240*time.Second)
+	testCtx, testCancel := context.WithTimeout(t.Context(), 120*time.Second)
 	defer testCancel()
 
 	runnerctx, runnerCancel := context.WithCancel(testCtx)
@@ -48,8 +48,9 @@ func Test_InitRunner(t *testing.T) {
 
 	// get events from RMQ
 	interceptorQueue := make(chan amqp.Delivery, 100)
-	if err := SharedTF.Rmqm.Subscribe(testCtx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
-		t.Fatalf("Failed to subscribe to queue: %v", err)
+	routingKey := tr.TestJobSpec.SubmissionID
+	if err := SharedTF.Rmqm.SubscribeToExchange(testCtx, interceptorQueue, os.Getenv("DIRECT_EXCHANGE_NAME"), routingKey); err != nil {
+		t.Fatalf("Failed to subscribe to exchange: %v", err)
 	}
 
 	// channel to signal event end

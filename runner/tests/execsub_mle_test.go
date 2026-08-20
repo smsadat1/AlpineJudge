@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"local/runner/pkg"
+	"os"
 	"testing"
 	"time"
 	"utils"
@@ -20,20 +21,18 @@ func Test_ExecSubm_MLE(t *testing.T) {
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
-	// tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/mlemaker.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/mlemaker.cpp")
 
-	// tf.StartTestMinioS3(t, ctx)
-	// tf.StartTestRMQ(t, ctx)
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
 	// get events from RMQ
 	interceptorQueue := make(chan amqp.Delivery, 100)
-	if err := SharedTF.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
-		t.Fatalf("Failed to subscribe to queue: %v", err)
+	routingKey := tr.TestJobSpec.SubmissionID
+	if err := SharedTF.Rmqm.SubscribeToExchange(ctx, interceptorQueue, os.Getenv("DIRECT_EXCHANGE_NAME"), routingKey); err != nil {
+		t.Fatalf("Failed to subscribe to exchange: %v", err)
 	}
 
 	// channel to signal event end

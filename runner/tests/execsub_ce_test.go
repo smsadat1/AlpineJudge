@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"local/runner/pkg"
+	"os"
 	"testing"
 	"time"
 	"utils"
@@ -29,8 +30,9 @@ func Test_ExecSubm_CE(t *testing.T) {
 
 	// get events from RMQ
 	interceptorQueue := make(chan amqp.Delivery, 100)
-	if err := SharedTF.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
-		t.Fatalf("Failed to subscribe to queue: %v", err)
+	routingKey := tr.TestJobSpec.SubmissionID
+	if err := SharedTF.Rmqm.SubscribeToExchange(ctx, interceptorQueue, os.Getenv("DIRECT_EXCHANGE_NAME"), routingKey); err != nil {
+		t.Fatalf("Failed to subscribe to exchange: %v", err)
 	}
 
 	// channel to signal event end
