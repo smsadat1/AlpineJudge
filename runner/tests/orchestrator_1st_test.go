@@ -25,21 +25,15 @@ func Test_Orchestrator_ts001(t *testing.T) {
 	warmCont := SharedTF.GetWarmContainer(t, cCtx)
 
 	// upload artifacts to S3 first ==============
-	srcFileData, err := os.Open("../examples/main.cpp")
-	if err != nil {
-		t.Fatalf("Failed to get source submission file: %v", err)
-	}
-	if err := SharedTF.S3m.UploadFileToS3(ctx, tr.TestJobSpec.SrcCodeS3Key, srcFileData); err != nil {
-		t.Fatalf("Failed to upload source file: %v", err)
-	}
-	if err := SharedTF.S3m.UploadDirToS3(ctx, tr.TestJobSpec.TestsetS3Key, "ts001"); err != nil {
+	if err := SharedTF.S3m.UploadDirToS3(ctx, tr.TestJobSpec.Testset, "ts001"); err != nil {
 		t.Fatalf("Failed to upload testsests: %v", err)
 	}
 
 	// get events from RMQ
 	interceptorQueue := make(chan amqp.Delivery, 100)
-	if err := SharedTF.Rmqm.Subscribe(ctx, interceptorQueue, tr.TestJobSpec.SSEQueue, "test-consoomer"); err != nil {
-		t.Fatalf("Failed to subscribe to queue: %v", err)
+	routingKey := tr.TestJobSpec.SubmissionID
+	if err := SharedTF.Rmqm.SubscribeToExchange(ctx, interceptorQueue, os.Getenv("DIRECT_EXCHANGE_NAME"), routingKey); err != nil {
+		t.Fatalf("Failed to subscribe to exchange: %v", err)
 	}
 
 	// channel to signal event end

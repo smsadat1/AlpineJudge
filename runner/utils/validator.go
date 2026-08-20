@@ -25,16 +25,5 @@ func ProcessJobSpec(
 	}
 
 	// log.Printf("Processed job spec: %v\n", jobspec)
-
-	if msg.Acknowledger != nil {
-		err = msg.Ack(false)
-		if err != nil {
-			log.Printf("Failed to ACK message: %v\n", err)
-			return shared.JobSpec{}, err
-		}
-	} else {
-		log.Println("Skipping ACK logic (Running in Mock/Test environment)")
-	}
-	jobspec.SSEQueue = ssequeue
 	return jobspec, nil
 }

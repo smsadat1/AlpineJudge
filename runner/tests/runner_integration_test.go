@@ -35,14 +35,7 @@ func Test_InitRunner(t *testing.T) {
 	tr := pkg.NewRunnerTestRepository(t)
 
 	// upload artifacts to S3 first ==============
-	srcFileData, err := os.Open("../examples/main.cpp")
-	if err != nil {
-		t.Fatalf("Failed to get source submission file: %v", err)
-	}
-	if err := SharedTF.S3m.UploadFileToS3(testCtx, tr.TestJobSpec.SrcCodeS3Key, srcFileData); err != nil {
-		t.Fatalf("Failed to upload source file: %v", err)
-	}
-	if err := SharedTF.S3m.UploadDirToS3(testCtx, tr.TestJobSpec.TestsetS3Key, "ts001"); err != nil {
+	if err := SharedTF.S3m.UploadDirToS3(testCtx, tr.TestJobSpec.Testset, "ts001"); err != nil {
 		t.Fatalf("Failed to upload testsests: %v", err)
 	}
 
@@ -114,7 +107,6 @@ func Test_InitRunner(t *testing.T) {
 		Rmq:       SharedTF.Rmqm,
 		S3:        SharedTF.S3m,
 		JobQueue:  "later",
-		SSEQueue:  tr.TestJobSpec.SSEQueue,
 		Namespace: "test-runner",
 	}
 

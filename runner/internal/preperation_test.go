@@ -38,8 +38,6 @@ func Test_PrepareExecrules(t *testing.T) {
 		Language:     "cc",
 		SubmissionID: testSubmissionID,
 		Bucket:       os.Getenv("TEST_S3_BUCKET_NAME"),
-		SrcCodeS3Key: testSrcCodeS3key,
-		TestsetS3Key: testTestsetS3key,
 		Testset:      testTestsetID,
 	}
 

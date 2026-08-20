@@ -20,6 +20,7 @@ import (
 
 func InitRunner(ctx context.Context, deps utils.EngineDeps) {
 
+	log.Println("Initializing Runner...")
 	/*
 		tmp subdirectories are created in layers.
 		The base ones (/tmp/runner/sockets /tmp/runner/testsets /tmp/runner/submissions ) are created during initiation (here)
@@ -38,6 +39,7 @@ func InitRunner(ctx context.Context, deps utils.EngineDeps) {
 			log.Fatalf("failed to create base temp directories %s: %v", dir, err)
 		}
 	}
+	log.Println("Created base temp directories")
 
 	// rmq consumer (to collect jobspecs from rmq)
 	localqueue := make(chan amqp.Delivery)
@@ -138,7 +140,7 @@ func InitRunner(ctx context.Context, deps utils.EngineDeps) {
 				if err != nil {
 					log.Printf("Orchestrator error: %v", err)
 				}
-				_ = delivery.Ack(false) // send ACK to rmq
+				_ = delivery.Ack(false) // send ACK to rmq only after sending it downstream
 				fmt.Printf("Container info: %v", contInfo)
 
 			}(msg)

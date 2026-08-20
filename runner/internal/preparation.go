@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"log"
 	"utils"
 
 	"shared"
@@ -10,6 +11,8 @@ import (
 func PrepareExecrules(
 	ctx context.Context, s3m shared.S3Manager, jobspec shared.JobSpec,
 ) (error, utils.ExecRules) {
+
+	log.Printf("Recieveed JobSpec2: %v\n", jobspec)
 
 	language := jobspec.Language
 
@@ -74,8 +77,7 @@ func PrepareExecrules(
 	err := downloadFileS3(
 		ctx, s3m,
 		jobspec.Bucket,
-		jobspec.SrcCodeS3Key,
-		jobspec.TestsetS3Key,
+		jobspec.Testset,
 		hostSrcFilePath,
 		hostTestFileDir,
 	)
@@ -91,8 +93,7 @@ func PrepareExecrules(
 		CompileArgs: compileArgs,
 		RunArgs:     runArgs,
 
-		TestID:         jobspec.Testset,
-		EventQueueName: jobspec.SSEQueue,
+		TestID: jobspec.Testset,
 
 		PerTestMemoryLimitMB: jobspec.PerTestMemoryLimitMB,
 		PerTestTimeoutsec:    jobspec.PerTestTimeoutsec,

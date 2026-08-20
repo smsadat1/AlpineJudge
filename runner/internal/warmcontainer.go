@@ -32,7 +32,7 @@ Without this, startup becomes a bootstrapping paradox.
 func CreateWarmContainer(ctx context.Context, client *containerd.Client, slotID uint32) (*WarmContainer, error) {
 
 	// Pull the container image & build OCI specs
-	alpineJudgeMasterImage := "ghcr.io/smsadat1/alpinejudge/master:test"
+	alpineJudgeMasterImage := "ghcr.io/smsadat1/alpinejudge/master:v0.1.0"
 	image, err := getContainerImage(alpineJudgeMasterImage, client, ctx)
 
 	// Guard against nil pointer image

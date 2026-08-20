@@ -36,6 +36,8 @@ func OrchestrateSubm(
 	rmqm shared.RMQManager,
 ) (utils.ContainerInfo, error) {
 
+	log.Printf("Recieveed JobSpec2: %v\n", jobspec)
+
 	// submission specific sub dircectories creation
 	dirs := []string{
 		filepath.Join("/tmp", "runner", "testsets", jobspec.Testset),
@@ -47,6 +49,21 @@ func OrchestrateSubm(
 		}
 	}
 
+	// write src file to /tmp/runner
+	if jobspec.Language == "java" {
+		if err := os.WriteFile(
+			fmt.Sprintf("/tmp/runner/submissions/%v/Main.java", jobspec.SubmissionID), []byte(jobspec.Source), 0755,
+		); err != nil {
+			log.Printf("Failed writing sourcde code stirng to file for submissionID: %v\n", jobspec.SubmissionID)
+		}
+	} else {
+		if err := os.WriteFile(
+			fmt.Sprintf("/tmp/runner/submissions/%v/main.%v", jobspec.SubmissionID, jobspec.Language), []byte(jobspec.Source), 0755,
+		); err != nil {
+			log.Printf("Failed writing sourcde code stirng to file for submissionID: %v\n", jobspec.SubmissionID)
+		}
+	}
+
 	// check if testset already exists on filesystem
 	testsetDirPath := fmt.Sprintf("/tmp/runner/testsets/%v/", jobspec.Testset)
 	exists, _ := isTestsetDirEmpty(testsetDirPath)
@@ -55,7 +72,7 @@ func OrchestrateSubm(
 	if !exists {
 		log.Printf("Testset %v doesn't exists on filesystem, downloading...\n", testsetDirPath)
 		if err := s3m.DownloadDirFromS3(ctx,
-			jobspec.Bucket, jobspec.TestsetS3Key, testsetDirPath); err != nil {
+			jobspec.Bucket, jobspec.Testset, testsetDirPath); err != nil {
 			return utils.ContainerInfo{}, fmt.Errorf("Failed to download testet from S3:  %v\n", err)
 		}
 	} else {
