@@ -50,7 +50,7 @@ Install the SDK:
 
 ```bash
 pip install alpinejudge-sdk
-ctr -n aj-namespace images pull ghcr.io/smsadat1/alpinejudge/master:v0.1.0
+ctr -n ajnamespace images pull ghcr.io/smsadat1/alpinejudge/master:v0.1.0
 
 ```
 
@@ -63,15 +63,21 @@ from alpinejudge import AlpineJudge
 async def main():
 
     client = AlpineJudge() 
+    await client.upload_testset(testset_path='path/to/testset', testset_id='testset_id')
+
+    with open("program.cpp", "r", encoding="utf-8") as file:
+        file_string = file.read()
 
     async for event in client.submit_and_watch(
-        submission_id="001",
-        bucket="ajbucket",
+        submission_id="submission_id",
         language="cpp",
-        source= '#include <iostream>\nint main() { std::cout << "Hello World!"; return 0; }',
-        testset_id="cf86B",
+        source= file_string,
+        testset_id="ts001",
+        memory_limit_mb=1024,
+        timeout_sec=20,
+        log_limit_kb=1024,
     ):
-        print(f"{event.status} -> {event.details or event.stdout}")
+        print(f"{event.type} {event.status} {event.details}")
 
 
 if __name__ == "__main__":

@@ -51,7 +51,6 @@ func PrepareSubmission(
 	source := submission.Source
 	body := strings.NewReader(source)
 	srcS3key := "submissions/" + submission.SubmissionID + "/"
-	testS3key := submission.Testset + "/"
 
 	if err := s3m.UploadFileToS3(ctx, srcS3key, body); err != nil {
 		return shared.JobSpec{}, err
@@ -61,8 +60,6 @@ func PrepareSubmission(
 		SubmissionID: submission.SubmissionID,
 		Language:     submission.Language,
 		Bucket:       submission.Bucket,
-		SrcCodeS3Key: srcS3key,
-		TestsetS3Key: testS3key,
 		Testset:      submission.Testset,
 	}
 

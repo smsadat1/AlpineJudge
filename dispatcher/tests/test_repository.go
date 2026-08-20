@@ -2,7 +2,6 @@ package tests
 
 import (
 	"dispatcher/internal"
-	"fmt"
 	"shared"
 	"testing"
 )
@@ -40,10 +39,7 @@ func NewDispatcherRepository(t *testing.T) TestRepository {
 		    return 0;   
 		}`,
 		Bucket:               "testbucket",
-		SrcCodeS3Key:         fmt.Sprintf("submissions/%s/main.cpp", tsID),
-		TestsetS3Key:         fmt.Sprintf("testsets/%s/main.cpp", tsID),
 		Testset:              testsetID,
-		SSEQueue:             "queue-001",
 		PerTestMemoryLimitMB: 1024,
 		PerTestLogLimitKB:    512,
 		PerTestTimeoutsec:    5,
