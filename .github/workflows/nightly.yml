@@ -21,5 +21,9 @@ jobs:
 
       - name: Wait for services 
         run: docker compose ps 
-
-      # next steps should be testing the system as a whole with submissions
+      
+      - name: Run full system test
+        run: | 
+          pip install alpinejudge-sdk cryptography
+          python tests/e2e/generator1.py && python tests/e2e/generator2.py
+          python tests/e2e/fulltest.py
