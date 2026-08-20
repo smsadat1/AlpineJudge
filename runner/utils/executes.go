@@ -82,8 +82,8 @@ type Event struct {
 	Details string
 }
 
-// RMQ specific event strcuture | eventRouter() seperates Event into RMQ & S3 payload
-type RMQData struct {
+// RMQ specific event strcuture
+type RMQPayload struct {
 	Type    string
 	Status  string
 	Details string
