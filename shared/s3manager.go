@@ -2,6 +2,7 @@ package shared
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -13,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 )
 
 type S3Manager struct {
@@ -54,7 +56,15 @@ func (m *S3Manager) CreateABucket(ctx context.Context, bucketName string) (*s3.C
 	s3i := s3.CreateBucketInput{Bucket: &bucketName}
 	crbo, err := m.client.CreateBucket(ctx, &s3i)
 	if err != nil {
-		return &s3.CreateBucketOutput{}, fmt.Errorf("failed to create bucket %s: %w\n", bucketName, err)
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			// Catch BucketAlreadyOwnedByYou or BucketAlreadyExists
+			if apiErr.ErrorCode() == "BucketAlreadyOwnedByYou" || apiErr.ErrorCode() == "BucketAlreadyExists" {
+				// when bucket already exists, ignore error
+				return nil, nil
+			}
+		}
+		return nil, fmt.Errorf("failed to create bucket %s: %w\n", bucketName, err)
 	}
 	return crbo, nil
 }

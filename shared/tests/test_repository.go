@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"shared"
 	"testing"
 )
@@ -52,10 +51,7 @@ func NewRepository(t *testing.T) TestRepository {
 		}`,
 		SubmissionID:         tsID,
 		Bucket:               "testbucket",
-		SrcCodeS3Key:         fmt.Sprintf("submissions/%s/main.cpp", tsID),
-		TestsetS3Key:         fmt.Sprintf("testsets/%s/main.cpp", tsID),
 		Testset:              testsetID,
-		SSEQueue:             "queue-001",
 		PerTestMemoryLimitMB: 1024,
 		PerTestLogLimitKB:    512,
 		PerTestTimeoutsec:    5,
