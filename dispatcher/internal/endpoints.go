@@ -15,10 +15,9 @@ import (
 
 // encapsulates shared long term dependencies for http server
 type ServerEnv struct {
-	ctx  *context.Context
-	s3m  *shared.S3Manager
-	rmqm *shared.RMQManager
-
+	ctx    *context.Context
+	s3m    *shared.S3Manager
+	rmqm   *shared.RMQManager
 	bucket string
 }
 
@@ -37,6 +36,35 @@ func writeError(w http.ResponseWriter, status int, err error) {
 
 func (env *ServerEnv) ResponseRootHanlder(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "AlpineJudge Alive"})
+}
+
+func (env *ServerEnv) SendPresignedKeyForTestset(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, fmt.Errorf("Method not allowed"))
+		return
+	}
+
+	var data map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	if uploadKey, exists := data["testset_id"]; exists {
+		s3PresignedKey, err := env.s3m.GeneratePresignedUploadURL(*env.ctx, uploadKey)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to generate Presigned Upload url: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		// success
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"s3_presigned_key": s3PresignedKey,
+		})
+	}
 }
 
 func (env *ServerEnv) SubmissionReciever(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +197,7 @@ func InitHTTPServer(
 
 	// {$} make matches ONLY the exact root path "/"
 	mux.HandleFunc("GET /{$}", env.ResponseRootHanlder)
+	mux.HandleFunc("POST /presignedkey", env.SendPresignedKeyForTestset)
 	mux.HandleFunc("POST /submit", env.SubmissionReciever)
 	mux.HandleFunc("GET /submissions/{submission_id}/events", env.SSEHandler)
 
