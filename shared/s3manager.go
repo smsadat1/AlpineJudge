@@ -59,6 +59,20 @@ func (m *S3Manager) CreateABucket(ctx context.Context, bucketName string) (*s3.C
 	return crbo, nil
 }
 
+func (m *S3Manager) GeneratePresignedUploadURL(ctx context.Context, key string) (string, error) {
+	pClient := s3.NewPresignClient(m.client)
+
+	req, err := pClient.PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(m.bucket),
+		Key:    aws.String(key),
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to presign put object: %w", err)
+	}
+	return req.URL, nil
+}
+
 func (m *S3Manager) DeleteABucket(ctx context.Context, bucketName string) error {
 	_, err := m.client.DeleteBucket(ctx, &s3.DeleteBucketInput{
 		Bucket: &bucketName,
