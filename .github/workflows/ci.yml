@@ -48,9 +48,10 @@ jobs:
         if: matrix.module == 'runner'
         working-directory: ${{ matrix.module }}
         run: |
+          pip install cryptography
           sudo rm -rf /tmp/rabbitmq-testcontainers*
           sudo systemctl start containerd
           sudo ctr -n test-namespace images pull ghcr.io/smsadat1/alpinejudge/master:test
-          cd tests && python generator.py
+          cd tests && python generator.py && python generator2.py
           sudo go vet -v ./...
-          sudo go test -race -v -timeout 20m ./...
+          sudo go test -race -v -timeout 30m ./...
