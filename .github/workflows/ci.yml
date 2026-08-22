@@ -4,6 +4,9 @@ on:
   push: 
       branches: [main]
       paths-ignore:
+       - 'README.md'
+       - 'SECURITY.md'
+       - 'LICENSE' 
        - 'docs/**'
        - 'sdk/**'
   pull_request:
