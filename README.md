@@ -84,8 +84,6 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-See the [Python SDK documentation](docs/sdk/pythonexamples.md) for more examples.
-
 ---
 
 ## Architecture & Design Philosophy
@@ -115,7 +113,7 @@ Execution flow:
 
   - Multi-language execution (Python, C/C++, Go, Java, JS)
   - Secure sandboxed execution using containerd containers
-  - SSE based execution status streaming
+  - SSE based execution status streaming via Rabbitmq
 
 
 ## Non-Goal 
