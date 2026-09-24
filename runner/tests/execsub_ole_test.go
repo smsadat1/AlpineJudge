@@ -21,14 +21,11 @@ func Test_ExecSubm_OLE(t *testing.T) {
 	ctx = namespaces.WithNamespace(ctx, "test-namespace")
 	defer cancel()
 
-	// tf := pkg.NewRunnerTestFactory(t)
 	tr := pkg.NewRunnerTestRepository(t)
 	tr.TestAgentExecSpec.CompileArgs[5] = fmt.Sprintf("/workspace/submissions/%v/olemaker.cpp", tr.TestJobSpec.SubmissionID)
 	tr.CreateTempLocations(t)
 	tr.CopyFiles(t, "../examples/olemaker.cpp")
 
-	// tf.StartTestMinioS3(t, ctx)
-	// tf.StartTestRMQ(t, ctx)
 	warmCont := SharedTF.GetWarmContainer(t, ctx)
 
 	// get events from RMQ

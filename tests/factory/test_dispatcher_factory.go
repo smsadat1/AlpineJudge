@@ -114,7 +114,7 @@ func (tf *TestFactory) StartTestMinioS3(t *testing.T, ctx context.Context) {
 
 	minioContainer, err := minio.Run(
 		ctx,
-		"quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z",
+		"pgsty/minio:RELEASE.2026-08-04T00-00-00Z",
 		minio.WithPassword(tf.s3Password),
 		minio.WithUsername(tf.s3UserName),
 		testcontainers.WithEnv(map[string]string{
