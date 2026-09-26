@@ -8,7 +8,6 @@ async def main():
 
     async for event in client.submit_and_watch(
         submission_id="sub001",
-        bucket="ajbucket",
         language="cpp",
         source= '#include <iostream>\nint main() { std::cout << "Hello World!"; return 0; }',
         testset_id="ts001",

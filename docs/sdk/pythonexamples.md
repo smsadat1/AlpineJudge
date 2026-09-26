@@ -1,65 +1,76 @@
-```python
-import alpinejudge as aj
+# Python SDK usage guideline 
 
-client = aj.Client("https://aj.example.com")
-
-job = client.submit_file(
-    language="cpp",
-    version="c++17",
-    file="main.cpp",
-    testset="t001",
-    testset_version="v1",
-)
-
-for event in job.events():
-    print(event)
-
-result = job.wait()
-
-print(result.verdict)
-print(result.stdout)
-print(result.stderr)
-print(result.exec_time_ms)
-```
-
-Alternative usage:
-
-```python
-job = client.submit_code(
-    language="python",
-    version="python3.12",
-    source_code="""
-print("Hello AlpineJudge")
-""",
-    testset="hello",
-    testset_version="v1",
-)
-
-print(job.wait().verdict)
-```
-
-Asynchronous polling:
-
-```python
-while not job.done:
-    print(job.status)
-    time.sleep(1)
-
-print(job.result)
-```
-
-Result object:
-
-```python
-result.verdict
-result.exec_time_ms
-result.memory_kb
-result.stdout
-result.stderr
-result.compile_stdout
-result.compile_stderr
-result.score
-```
+```bash
+pip install alpinejudge-sdk
+ctr -n ajnamespace images pull ghcr.io/smsadat1/alpinejudge/master:v0.1.0
 
 ```
+
+**Single submission example**
+
+```Python
+import asyncio
+from ..client import AlpineJudge
+
+async def main():
+
+    client = AlpineJudge() 
+    await client.upload_testset(testset_path='ts001', testset_id='ts001')
+
+    async for event in client.submit_and_watch(
+        submission_id="sub001",
+        language="cpp",
+        source= '#include <iostream>\nint main() { std::cout << "Hello World!"; return 0; }',
+        testset_id="ts001",
+        memory_limit_mb=1024,
+        timeout_sec=20,
+        log_limit_kb=1024,
+    ):
+        print(f"{event.status} -> {event.details or event.stdout}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
+
+**Batch submission example**
+
+```Python
+import asyncio
+from ..client import AlpineJudge
+
+async def run_single_submission(client: AlpineJudge, sub_id: str, code: str):
+    print(f"[{sub_id}] Dispatching submission...")
+    
+    async for event in client.submit_and_watch(
+        submission_id="sub001",
+        language="cpp",
+        source= '#include <iostream>\nint main() { std::cout << "Hello World!"; return 0; }',
+        testset_id="ts001",
+        memory_limit_mb=1024,
+        timeout_sec=20,
+        log_limit_kb=1024,
+    ):
+        print(f"[{sub_id}] {event.status} -> {event.details or event.stdout}")
+
+async def main():
+    cpp_code = '#include <iostream>\nint main() { std::cout << "Hello!"; return 0; }'
+    
+    async with AlpineJudge() as judge:
+        # Launch 3 judge requests simultaneously
+        tasks = [
+            run_single_submission(judge, f"sub_{i}", cpp_code)
+            for i in range(1, 4)
+        ]
+        
+        # Stream all 3 concurrently without blocking the thread
+        await asyncio.gather(*tasks)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+**Important: **
+- Make sure you already have unzipped testset
+- Code for submissions should be converted to string upfront
+- File submissions not allowed
